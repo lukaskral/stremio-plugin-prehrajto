@@ -163,6 +163,22 @@ class Storage {
     });
   }
 
+  beginTransaction() {
+    console.log("Begin transaction");
+    return new Promise((resolve, reject) => {
+      this.db.run("BEGIN TRANSACTION;", (err) =>
+        err ? reject(err) : resolve(),
+      );
+    });
+  }
+
+  commitTransaction() {
+    console.log("Commit transaction");
+    return new Promise((resolve, reject) => {
+      this.db.run("COMMIT;", (err) => (err ? reject(err) : resolve()));
+    });
+  }
+
   count() {
     return new Promise((resolve, reject) => {
       this.db.get("SELECT count(*) as cnt FROM detail", (err, row) => {

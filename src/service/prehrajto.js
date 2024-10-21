@@ -6,6 +6,7 @@ const { Storage } = require("../storage/Storage.js");
 const XmlStream = require("xml-stream");
 const Stream = require("stream");
 const { isOlder } = require("../utils/isOlder.js");
+const { is } = require("express/lib/request.js");
 
 const headers = {
   accept:
@@ -77,7 +78,7 @@ async function loginAnonymous() {
  * @param {(data: StorageItem) => void} onItem
  */
 async function fetchSitemap(page = 1, onItem) {
-  const response = await fetch(`https://prehraj.to/sitemap-${page}1.to.xml`, {
+  const response = await fetch(`https://prehraj.to/sitemap-${page}.to.xml`, {
     headers: {
       ...headers,
       accept: "application/xhtml+xml,application/xml",
@@ -87,9 +88,10 @@ async function fetchSitemap(page = 1, onItem) {
     method: "GET",
   });
 
+  let isFetching = true;
   const readableStream = new Stream.Readable({
     read() {
-      return true;
+      return isFetching;
     },
   });
   const textEncoder = new TextDecoder();
@@ -97,6 +99,7 @@ async function fetchSitemap(page = 1, onItem) {
   let i = 0;
   xml.on("endElement: url", (item) => {
     const video = item["video:video"];
+    i++;
     onItem({
       url: item["loc"],
       title: video["video:title"],
@@ -108,34 +111,51 @@ async function fetchSitemap(page = 1, onItem) {
   });
 
   let j = 0;
+
   for await (const chunk of response.body) {
     readableStream.push(textEncoder.decode(chunk));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log(`Items processed: ${i} / ${page}`);
     j++;
   }
+  isFetching = false;
 }
 
-async function fillStorage(storage, maxPages = 30) {
-  let nextPage = 1;
+async function fillStorage(storage, maxPages = 30, nextPage = 1) {
+  let count = 0;
+  await storage.beginTransaction();
+
   while (true) {
     try {
       console.log("Fetching page ", nextPage);
+
       await fetchSitemap(nextPage, async (item) => {
+        count++;
         try {
           await storage.upsert(item);
         } catch (e) {
           console.error("Error inserting item", e);
         }
       });
-      await new Promise((r) => setTimeout(r, 2_000));
+
+      await storage.commitTransaction();
+      await storage.beginTransaction();
+
+      count = 0;
       nextPage++;
+
       if (nextPage > maxPages) {
         break;
       }
     } catch (e) {
       console.log("Indexing finished", e);
+      console.log("Item", count);
       break;
     }
   }
+
+  storage.commitTransaction();
+  clearInterval(int);
 }
 
 async function getResultStreamUrls(result, fetchOptions = {}) {
@@ -251,10 +271,11 @@ function getResolver(initOptions) {
       const lastReindexed = await storage.getMeta("lastReindexed");
 
       if (!isIndexing) {
-        if (isOlder(3_600_000, lastReindexed)) {
+        if (isOlder(1_000, lastReindexed)) {
           console.log("Reindexing site...");
           isIndexing = true;
-          fillStorage(storage).then(() => {
+
+          fillStorage(storage, 50).then(() => {
             storage.setMeta("lastReindexed", new Date().toISOString());
             storage.setMeta("lastUpdated", new Date().toISOString());
             isIndexing = false;
