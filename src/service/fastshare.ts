@@ -165,7 +165,7 @@ export function getResolver(): Resolver {
        * This resolver works fine but the stream fails when you try to seek in the video.
        * It's disabled for now
        */
-      return true;
+      return false;
     },
     validateConfig: async () => true,
     search: (title) => {
