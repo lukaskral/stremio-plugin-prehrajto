@@ -1,6 +1,6 @@
 import type { Meta } from "./meta.ts";
 import { computeScore } from "./score.ts";
-import type { UserConfigData } from "./userConfig/userConfig.ts";
+import type { ConfigField, UserConfigData } from "./userConfig/userConfig.ts";
 import { cartesian } from "./utils/cartesian.ts";
 import { deduplicateByProp } from "./utils/deduplicateByProp.ts";
 
@@ -34,7 +34,8 @@ export type StreamResult = ScoredSearchResult & StreamDetails;
 
 export type Resolver = {
   resolverName: string;
-  init: () => Promise<boolean>;
+  init: () => boolean;
+  getConfigFields: () => ConfigField[];
   validateConfig: (config: UserConfigData) => Promise<boolean>;
   search: (title: string, config: UserConfigData) => Promise<SearchResult[]>;
   resolve: (

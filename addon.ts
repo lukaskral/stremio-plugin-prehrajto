@@ -2,19 +2,33 @@ import { readFileSync } from "fs";
 import type { ContentType, Manifest } from "stremio-addon-sdk";
 import SDK from "stremio-addon-sdk";
 
-import { getTopItems,type Resolver } from "./src/getTopItems.ts";
+import { getTopItems, type Resolver } from "./src/getTopItems.ts";
 import { initResolvers } from "./src/initResolvers.ts";
 import { getMeta } from "./src/meta.ts";
 import { getImdbDetails } from "./src/service/imdb.ts";
 import {
+  type ConfigField,
   type UserConfigData,
-  userConfigDef,
 } from "./src/userConfig/userConfig.ts";
 import { bytesToSize } from "./src/utils/convert.ts";
+
+export let activeResolvers: Resolver[] = [];
+function getActiveResolvers() {
+  if (!activeResolvers.length) {
+    activeResolvers = initResolvers().filter((r) => r !== null);
+  }
+  return activeResolvers;
+}
 
 function getManifest() {
   const pkgData = readFileSync("./package.json", "utf8");
   const pkg = JSON.parse(pkgData);
+  const activeResolvers = getActiveResolvers();
+  const userConfigDef = activeResolvers.reduce(
+    (defs, resolver) => [...defs, ...resolver.getConfigFields()],
+    [] as ConfigField[],
+  );
+
   return {
     id: "community.czstreams",
     version: pkg.version,
@@ -34,7 +48,6 @@ function getManifest() {
 }
 
 const builder = new SDK.addonBuilder(getManifest());
-export let activeResolvers: Resolver[] = [];
 
 builder.defineStreamHandler(async (props) => {
   const { type, id, config } = props as {
@@ -56,9 +69,7 @@ builder.defineStreamHandler(async (props) => {
       },
     };
 
-    if (!activeResolvers.length) {
-      activeResolvers = (await initResolvers()).filter((r) => r !== null);
-    }
+    const activeResolvers = getActiveResolvers();
 
     const topItems = await getTopItems(meta, activeResolvers, config);
 

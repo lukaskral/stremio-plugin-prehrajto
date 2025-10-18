@@ -6,7 +6,7 @@ import { getResolver as getWebshareResolver } from "./service/webshare.ts";
 
 /** @typedef {import('./getTopItems.js').Resolver} Resolver */
 
-export async function initResolvers() {
+export function initResolvers() {
   /** @type {Resolver[]} */
   const resolvers = [
     getFastshareResolver(),
@@ -16,19 +16,12 @@ export async function initResolvers() {
     getWebshareResolver(),
   ];
 
-  const activeResolvers = (
-    await Promise.allSettled(
-      resolvers.map(async (resolver) => ({
-        resolver,
-        initialized: await resolver.init(),
-      })),
-    )
-  )
-    .map((r) =>
-      r.status === "fulfilled" && r.value && r.value.initialized
-        ? r.value.resolver
-        : null,
-    )
+  const activeResolvers = resolvers
+    .map((resolver) => ({
+      resolver,
+      initialized: resolver.init(),
+    }))
+    .map((r) => (r.initialized ? r.resolver : null))
     .filter((r) => Boolean(r));
   return activeResolvers;
 }

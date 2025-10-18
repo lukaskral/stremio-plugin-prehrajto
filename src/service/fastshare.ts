@@ -160,13 +160,25 @@ export function getResolver(): Resolver {
   return {
     resolverName: "Fastshare",
 
-    init: async () => {
+    init: () => {
       /**
        * This resolver works fine but the stream fails when you try to seek in the video.
        * It's disabled for now
        */
       return false;
     },
+    getConfigFields: () => [
+      {
+        key: "webshareUsername",
+        type: "text" as const,
+        title: "WebshareCz username",
+      },
+      {
+        key: "websharePassword",
+        type: "password" as const,
+        title: "WebshareCz password",
+      },
+    ],
     validateConfig: async () => true,
     search: (title) => {
       return getSearchResults(title, fetchOptions);

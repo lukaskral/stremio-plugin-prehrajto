@@ -1,3 +1,9 @@
+export type ConfigField = {
+  key: string;
+  type: "text" | "password";
+  title: string;
+};
+
 export const userConfigDef = [
   {
     key: "webshareUsername",
@@ -21,11 +27,4 @@ export const userConfigDef = [
   },
 ];
 
-export type UserConfigData = Partial<{
-  webshareUsername: string;
-  websharePassword: string;
-  prehrajtoUsername: string;
-  prehrajtoPassword: string;
-  sledujtetoUsername: string;
-  sledujtetoPassword: string;
-}>;
+export type UserConfigData = Record<string, string>;

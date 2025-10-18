@@ -99,7 +99,9 @@ export function getResolver(): Resolver {
   return {
     resolverName: "HellspyTo",
 
-    init: async () => true,
+    init: () => true,
+
+    getConfigFields: () => [],
 
     validateConfig: async () => true,
 

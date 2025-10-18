@@ -184,7 +184,20 @@ export function getResolver(): Resolver {
   return {
     resolverName: "PrehrajTo",
 
-    init: async () => true,
+    init: () => true,
+
+    getConfigFields: () => [
+      {
+        key: "prehrajtoUsername",
+        type: "text" as const,
+        title: "PrehrajTo username",
+      },
+      {
+        key: "prehrajtoPassword",
+        type: "password" as const,
+        title: "PrehrajTo password",
+      },
+    ],
 
     validateConfig: async (addonConfig) => {
       if (!addonConfig.prehrajtoUsername || !addonConfig.prehrajtoPassword) {

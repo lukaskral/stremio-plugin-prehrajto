@@ -148,7 +148,9 @@ export function getResolver(): Resolver {
   return {
     resolverName: "WebShare",
 
-    init: async () => true,
+    init: () => true,
+
+    getConfigFields: () => [],
 
     validateConfig: async (addonConfig) => {
       if (!addonConfig.webshareUsername || !addonConfig.websharePassword) {

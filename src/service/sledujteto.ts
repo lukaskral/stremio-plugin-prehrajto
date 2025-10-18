@@ -148,7 +148,7 @@ export function getResolver(): Resolver {
   return {
     resolverName: "SledujteTo",
 
-    init: async () => {
+    init: () => {
       /**
        * This resolver can't be easily fixed
        * It requires to call services/add-file-link endpoint every 30 seconds
@@ -156,6 +156,8 @@ export function getResolver(): Resolver {
        */
       return false;
     },
+
+    getConfigFields: () => [],
 
     validateConfig: async () => {
       /*
