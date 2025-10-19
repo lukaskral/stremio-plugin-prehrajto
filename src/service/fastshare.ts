@@ -14,10 +14,10 @@ function getSearchToken() {
 }
 
 async function getResultStreamUrls(
-  result: SearchResult,
+  resolverId: string,
   fetchOptions: FetchOptions = {},
 ): Promise<StreamDetails> {
-  const detailPageUrl = result.detailPageUrl;
+  const detailPageUrl = resolverId;
   const pageResponse = await fetch(detailPageUrl, {
     ...fetchOptions,
     headers: {
@@ -183,9 +183,7 @@ export function getResolver(): Resolver {
     search: (title) => {
       return getSearchResults(title, fetchOptions);
     },
-    resolve: async (searchResult) => ({
-      ...searchResult,
-      ...(await getResultStreamUrls(searchResult, fetchOptions)),
-    }),
+    resolve: async (resolverId) =>
+      getResultStreamUrls(resolverId, fetchOptions),
   };
 }

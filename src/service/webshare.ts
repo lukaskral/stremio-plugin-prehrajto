@@ -75,7 +75,7 @@ async function getTokens(userName: string, password: string) {
 }
 
 async function getResultStreamUrls(
-  result: SearchResult,
+  resolverId: string,
   tokens: Record<string, string>,
 ): Promise<StreamDetails> {
   const pageResponse = await fetch("https://webshare.cz/api/file_link/", {
@@ -83,7 +83,7 @@ async function getResultStreamUrls(
       ...headers,
       "content-type": "application/x-www-form-urlencoded",
     },
-    body: `ident=${result.resolverId}&category=video&wst=${tokens.wst}`,
+    body: `ident=${resolverId}&category=video&wst=${tokens.wst}`,
     method: "POST",
   });
 
@@ -172,15 +172,12 @@ export function getResolver(): Resolver {
       return getSearchResults(title, fetchOptions);
     },
 
-    resolve: async (searchResult, addonConfig) => {
+    resolve: async (resolverId, addonConfig) => {
       const fetchOptions = await getTokens(
         addonConfig.webshareUsername,
         addonConfig.websharePassword,
       );
-      return {
-        ...searchResult,
-        ...(await getResultStreamUrls(searchResult, fetchOptions)),
-      };
+      return getResultStreamUrls(resolverId, fetchOptions);
     },
   };
 }

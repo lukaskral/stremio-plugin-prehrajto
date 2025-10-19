@@ -62,7 +62,7 @@ async function getFetchOptions(userName: string, password: string) {
 }
 
 async function getResultStreamUrls(
-  result: SearchResult,
+  resolverId: string,
   fetchOptions: FetchOptions = {},
 ): Promise<StreamDetails> {
   const pageResponse = await fetch(
@@ -75,7 +75,7 @@ async function getResultStreamUrls(
       },
       body: JSON.stringify({
         params: {
-          id: result.resolverId,
+          id: resolverId,
         },
       }),
       method: "POST",
@@ -180,15 +180,12 @@ export function getResolver(): Resolver {
       return getSearchResults(title, fetchOptions);
     },
 
-    resolve: async (searchResult, addonConfig) => {
+    resolve: async (resolverId, addonConfig) => {
       const fetchOptions = await getFetchOptions(
         addonConfig.sledujtetoUsername ?? "",
         addonConfig.sledujtetoPassword,
       );
-      return {
-        ...searchResult,
-        ...(await getResultStreamUrls(searchResult, fetchOptions)),
-      };
+      return getResultStreamUrls(resolverId, fetchOptions);
     },
   };
 }

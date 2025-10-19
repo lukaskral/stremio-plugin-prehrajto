@@ -1,4 +1,4 @@
-import type { Resolver, SearchResult, StreamDetails } from "../getTopItems.ts";
+import type { Resolver, StreamDetails } from "../getTopItems.ts";
 import commonHeaders, { type FetchOptions } from "../utils/headers.ts";
 
 const headers = {
@@ -13,11 +13,11 @@ async function getFetchOptions() {
 }
 
 async function getResultStreamUrls(
-  result: SearchResult,
+  resolverId: string,
   fetchOptions: FetchOptions = {},
 ): Promise<StreamDetails> {
   const linksRegexp = /\\"links\\":(\{.*?\})/gi;
-  const detailPageUrl = result.detailPageUrl;
+  const detailPageUrl = `https://www.hellspy.to/video/${resolverId}`;
   const pageResponse = await fetch(detailPageUrl, {
     ...fetchOptions,
     headers: {
@@ -83,7 +83,7 @@ async function getSearchResults(
 
   const results = pageData.payload.data.map((file) => {
     return {
-      resolverId: file.id,
+      resolverId: `${file.slug}/${file.id}`,
       title: file.name,
       detailPageUrl: `https://www.hellspy.to/video/${file.slug}/${file.id}`,
       duration: file.length,
@@ -110,12 +110,9 @@ export function getResolver(): Resolver {
       return getSearchResults(title, fetchOptions);
     },
 
-    resolve: async (searchResult) => {
+    resolve: async (resolverId) => {
       const fetchOptions = await getFetchOptions();
-      return {
-        ...searchResult,
-        ...(await getResultStreamUrls(searchResult, fetchOptions)),
-      };
+      return getResultStreamUrls(resolverId, fetchOptions);
     },
   };
 }

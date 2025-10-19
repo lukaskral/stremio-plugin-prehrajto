@@ -1,7 +1,6 @@
 import { parseHTML } from "linkedom";
 
 import type { Resolver, StreamDetails } from "../getTopItems.ts";
-import type { SearchResult } from "../getTopItems.ts";
 import { sizeToBytes, timeToSeconds } from "../utils/convert.ts";
 import { extractCookies, headerCookies } from "../utils/cookies.ts";
 import commonHeaders, { type FetchOptions } from "../utils/headers.ts";
@@ -74,10 +73,10 @@ async function getFetchOptions(userName: string, password: string) {
 }
 
 async function getResultStreamUrls(
-  result: SearchResult,
+  resolverId: string,
   fetchOptions: FetchOptions = {},
 ): Promise<StreamDetails> {
-  const detailPageUrl = result.detailPageUrl;
+  const detailPageUrl = `https://prehraj.to${resolverId}`;
   const pageResponse = await fetch(detailPageUrl, {
     ...fetchOptions,
     headers: {
@@ -218,15 +217,12 @@ export function getResolver(): Resolver {
       return getSearchResults(title, fetchOptions);
     },
 
-    resolve: async (searchResult, addonConfig) => {
+    resolve: async (resolverId, addonConfig) => {
       const fetchOptions = await getFetchOptions(
         addonConfig.prehrajtoUsername,
         addonConfig.prehrajtoPassword,
       );
-      return {
-        ...searchResult,
-        ...(await getResultStreamUrls(searchResult, fetchOptions)),
-      };
+      return getResultStreamUrls(resolverId, fetchOptions);
     },
   };
 }

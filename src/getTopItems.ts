@@ -39,7 +39,7 @@ export type Resolver = {
   validateConfig: (config: UserConfigData) => Promise<boolean>;
   search: (title: string, config: UserConfigData) => Promise<SearchResult[]>;
   resolve: (
-    result: SearchResult,
+    resolverId: string,
     config: UserConfigData,
   ) => Promise<StreamDetails>;
 };
@@ -65,8 +65,8 @@ export async function getTopItems(
 
       scoredSearchResults.sort(compareScores);
       const topItems: ScoredSearchResult[] =
-        scoredSearchResults.length > 7
-          ? scoredSearchResults.slice(0, 7)
+        scoredSearchResults.length > 30
+          ? scoredSearchResults.slice(0, 30)
           : scoredSearchResults;
       return topItems;
     },
@@ -82,28 +82,24 @@ export async function getTopItems(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ) as any as ScoredSearchResult[];
 
-  const results = (
-    await Promise.allSettled(
-      searchResults.map(
-        async (searchResult: StreamResult): Promise<StreamResult> => {
-          const resolver = resolvers.find(
-            (r) => searchResult.resolverName === r.resolverName,
-          );
-          if (!resolver) {
-            return null;
-          }
-          const data = await resolver.resolve(searchResult, config);
-          return {
-            ...searchResult,
-            ...data,
-          };
-        },
-      ),
-    )
-  )
-    .map((r) => (r.status === "fulfilled" && r.value ? r.value : null))
-    .filter((r) => Boolean(r));
-
+  const results = searchResults.map(
+    (searchResult: StreamResult): StreamResult => {
+      const resolver = resolvers.find(
+        (r) => searchResult.resolverName === r.resolverName,
+      );
+      if (!resolver) {
+        return null;
+      }
+      const data = {
+        video: `http://127.0.0.1:52932/media/${encodeURIComponent(resolver.resolverName)}/${encodeURIComponent(searchResult.resolverId)}?config=${encodeURIComponent(JSON.stringify(config))}`,
+        // ...(await resolver.resolve(searchResult.resolverId, config)),
+      };
+      return {
+        ...searchResult,
+        ...data,
+      };
+    },
+  );
   results.sort(compareScores);
 
   return results;
