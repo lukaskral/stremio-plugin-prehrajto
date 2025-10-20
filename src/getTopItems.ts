@@ -4,6 +4,7 @@ import type { ConfigField, UserConfigData } from "./userConfig/userConfig.ts";
 import { cartesian } from "./utils/cartesian.ts";
 import { deduplicateByProp } from "./utils/deduplicateByProp.ts";
 import { getServerUrl } from "./utils/getServerUrl.ts";
+import { getActiveResolvers } from "./utils/resolvers.ts";
 
 export type SearchResult = {
   resolverId: string;
@@ -104,29 +105,6 @@ export async function getTopItems(
   results.sort(compareScores);
 
   return results;
-}
-
-/**
- *
- * @param {Resolver[]} allResolvers
- * @param {UserConfigData} config
- * @returns {Promise<Resolver[]>}
- */
-async function getActiveResolvers(
-  allResolvers: Resolver[],
-  config: UserConfigData,
-): Promise<Resolver[]> {
-  const resolvers = (
-    await Promise.all(
-      allResolvers.map(async (r) => ({
-        resolver: r,
-        valid: await r.validateConfig(config),
-      })),
-    )
-  )
-    .filter((obj) => obj.valid)
-    .map((obj) => obj.resolver);
-  return resolvers;
 }
 
 /**

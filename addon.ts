@@ -2,8 +2,7 @@ import { readFileSync } from "fs";
 import type { ContentType, Manifest } from "stremio-addon-sdk";
 import SDK from "stremio-addon-sdk";
 
-import { getTopItems, type Resolver } from "./src/getTopItems.ts";
-import { initResolvers } from "./src/initResolvers.ts";
+import { getTopItems } from "./src/getTopItems.ts";
 import { getMeta } from "./src/meta.ts";
 import { getImdbDetails } from "./src/service/imdb.ts";
 import {
@@ -11,20 +10,13 @@ import {
   type UserConfigData,
 } from "./src/userConfig/userConfig.ts";
 import { bytesToSize } from "./src/utils/convert.ts";
-
-export let activeResolvers: Resolver[] = [];
-function getActiveResolvers() {
-  if (!activeResolvers.length) {
-    activeResolvers = initResolvers().filter((r) => r !== null);
-  }
-  return activeResolvers;
-}
+import { getAllResolvers } from "./src/utils/resolvers.ts";
 
 function getManifest() {
   const pkgData = readFileSync("./package.json", "utf8");
   const pkg = JSON.parse(pkgData);
-  const activeResolvers = getActiveResolvers();
-  const userConfigDef = activeResolvers.reduce(
+  const allResolvers = getAllResolvers();
+  const userConfigDef = allResolvers.reduce(
     (defs, resolver) => [...defs, ...resolver.getConfigFields()],
     [] as ConfigField[],
   );
@@ -69,9 +61,9 @@ builder.defineStreamHandler(async (props) => {
       },
     };
 
-    const activeResolvers = getActiveResolvers();
+    const allResolvers = getAllResolvers();
 
-    const topItems = await getTopItems(meta, activeResolvers, config);
+    const topItems = await getTopItems(meta, allResolvers, config);
 
     const streams = topItems.map((item) => ({
       url: item.video,

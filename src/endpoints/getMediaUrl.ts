@@ -1,23 +1,15 @@
 import { type Request, type Response } from "express";
 
-import { type Resolver } from "../getTopItems.ts";
-import { initResolvers } from "../initResolvers.ts";
 import { type UserConfigData } from "../userConfig/userConfig.ts";
-
-export let activeResolvers: Resolver[] = [];
-function getActiveResolvers() {
-  if (!activeResolvers.length) {
-    activeResolvers = initResolvers().filter((r) => r !== null);
-  }
-  return activeResolvers;
-}
+import { getActiveResolvers, getAllResolvers } from "../utils/resolvers.ts";
 
 async function getMediaUrl(
   resolver: string,
   id: string,
   config: UserConfigData,
 ): Promise<string> {
-  const activeResolvers = await getActiveResolvers();
+  const allResolvers = getAllResolvers();
+  const activeResolvers = await getActiveResolvers(allResolvers, config);
   const selectedResolver = activeResolvers.find(
     (r) => r.resolverName === resolver,
   );
