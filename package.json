@@ -1,6 +1,6 @@
 {
   "name": "stremio-plugin-prehrajto",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "",
   "type": "module",
   "engines": {
