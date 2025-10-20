@@ -3,6 +3,7 @@ import { computeScore } from "./score.ts";
 import type { ConfigField, UserConfigData } from "./userConfig/userConfig.ts";
 import { cartesian } from "./utils/cartesian.ts";
 import { deduplicateByProp } from "./utils/deduplicateByProp.ts";
+import { getServerUrl } from "./utils/getServerUrl.ts";
 
 export type SearchResult = {
   resolverId: string;
@@ -91,7 +92,7 @@ export async function getTopItems(
         return null;
       }
       const data = {
-        video: `http://127.0.0.1:52932/media/${encodeURIComponent(resolver.resolverName)}/${encodeURIComponent(searchResult.resolverId)}?config=${encodeURIComponent(JSON.stringify(config))}`,
+        video: `${getServerUrl()}/media/${encodeURIComponent(resolver.resolverName)}/${encodeURIComponent(searchResult.resolverId)}?config=${encodeURIComponent(JSON.stringify(config))}`,
         // ...(await resolver.resolve(searchResult.resolverId, config)),
       };
       return {
