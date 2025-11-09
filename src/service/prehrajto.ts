@@ -15,7 +15,6 @@ const headers = {
 
 /**
  * Get headers for authenticated response
-
  */
 async function login(userName: string, password: string) {
   if (!userName) {

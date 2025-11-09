@@ -167,18 +167,7 @@ export function getResolver(): Resolver {
        */
       return false;
     },
-    getConfigFields: () => [
-      {
-        key: "webshareUsername",
-        type: "text" as const,
-        title: "WebshareCz username",
-      },
-      {
-        key: "websharePassword",
-        type: "password" as const,
-        title: "WebshareCz password",
-      },
-    ],
+    getConfigFields: () => [],
     validateConfig: async () => true,
     search: (title) => {
       return getSearchResults(title, fetchOptions);

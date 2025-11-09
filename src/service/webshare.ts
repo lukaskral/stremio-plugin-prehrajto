@@ -150,7 +150,18 @@ export function getResolver(): Resolver {
 
     init: () => true,
 
-    getConfigFields: () => [],
+    getConfigFields: () => [
+      {
+        key: "webshareUsername",
+        type: "text" as const,
+        title: "WebshareCz username",
+      },
+      {
+        key: "websharePassword",
+        type: "password" as const,
+        title: "WebshareCz password",
+      },
+    ],
 
     validateConfig: async (addonConfig) => {
       if (!addonConfig.webshareUsername || !addonConfig.websharePassword) {
