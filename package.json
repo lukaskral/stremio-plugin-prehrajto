@@ -12,6 +12,7 @@
     "check": "npm run check:tsc & npm run check:lint",
     "check:tsc": "tsc --noEmit",
     "check:lint": "eslint .",
+    "test": "node --experimental-strip-types test.ts",
     "deploy": "beamup",
     "proxy": "npx proxy-lists getProxies --countries=\"cz,sk\" --anonymity-levels=\"elite\" --stdout"
   },
