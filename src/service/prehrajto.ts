@@ -55,19 +55,29 @@ async function loginAnonymous() {
   };
 }
 
-const fetchOptionsCache = new Map();
+const fetchOptionsCache = new Map<
+  string,
+  { created: number; headers: Record<string, unknown> }
+>();
 /**
  * Get headers for authenticated response
  */
 async function getFetchOptions(userName: string, password: string) {
   const cacheKey = `${userName}:${password}`;
-  const fetchOptions = fetchOptionsCache.get(cacheKey);
-  if (fetchOptions) {
-    return fetchOptions;
+  const fetchCache = fetchOptionsCache.get(cacheKey);
+  if (fetchCache) {
+    if (fetchCache.created && fetchCache.created > Date.now() - 8_400_000) {
+      return fetchCache.headers;
+    } else {
+      fetchOptionsCache.delete(cacheKey);
+    }
   }
 
   const newFetchOptions = await login(userName, password);
-  fetchOptionsCache.set(cacheKey, newFetchOptions);
+  fetchOptionsCache.set(cacheKey, {
+    created: Date.now(),
+    headers: newFetchOptions,
+  });
   return newFetchOptions;
 }
 
