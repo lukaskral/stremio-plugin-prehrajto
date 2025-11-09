@@ -1,4 +1,4 @@
-import { getResolver } from "./src/service/fastshare.ts";
+import { getResolver } from "./src/service/prehrajto.ts";
 
 (async function test() {
   const addonConfig = {};
@@ -18,7 +18,7 @@ import { getResolver } from "./src/service/fastshare.ts";
     return;
   }
 
-  const first = await resolver.resolve(results[0], addonConfig);
+  const first = await resolver.resolve(results[0].resolverId, addonConfig);
   const videoUrl = first.video;
   console.log("Video URL", videoUrl);
 

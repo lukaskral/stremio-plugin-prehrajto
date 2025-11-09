@@ -5,6 +5,7 @@ import SDK from "stremio-addon-sdk";
 
 import { addonInterface } from "./addon.ts";
 import mediaHandler from "./src/endpoints/getMediaUrl.ts";
+import testHandler from "./src/endpoints/test.ts";
 
 (
   SDK.serveHTTP(addonInterface, {
@@ -21,6 +22,11 @@ import mediaHandler from "./src/endpoints/getMediaUrl.ts";
       try {
         if (req.url && req.url.startsWith("/media/")) {
           mediaHandler(req, res);
+          return;
+        }
+
+        if (req.url && req.url.startsWith("/test/")) {
+          await testHandler(req, res);
           return;
         }
 
