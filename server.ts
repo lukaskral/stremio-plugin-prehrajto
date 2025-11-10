@@ -4,6 +4,7 @@ import { type Express, type Request, type Response } from "express";
 import SDK from "stremio-addon-sdk";
 
 import { addonInterface } from "./addon.ts";
+import cleanupHandler from "./src/endpoints/cleanup.ts";
 import mediaHandler from "./src/endpoints/getMediaUrl.ts";
 import testHandler from "./src/endpoints/test.ts";
 
@@ -27,6 +28,11 @@ import testHandler from "./src/endpoints/test.ts";
 
         if (req.url && req.url.startsWith("/test/")) {
           await testHandler(req, res);
+          return;
+        }
+
+        if (req.url && req.url.startsWith("/clean/")) {
+          await cleanupHandler(req, res);
           return;
         }
 

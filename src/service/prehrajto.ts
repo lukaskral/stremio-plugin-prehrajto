@@ -10,6 +10,7 @@ const headers = {
   cookie: "AC=C",
   accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "x-requested-with": "XMLHttpRequest",
   Referer: "https://prehraj.to/",
 };
 
@@ -17,21 +18,34 @@ const headers = {
  * Get headers for authenticated response
  */
 async function login(userName: string, password: string) {
+  const anonymousOptions = await loginAnonymous();
   if (!userName) {
-    return loginAnonymous();
+    return anonymousOptions;
   }
-  const r1 = await fetch("https://prehraj.to/?login-gtm_action=login", {
-    headers: {
-      ...headers,
-      "content-type": "application/x-www-form-urlencoded",
+  const formData = new FormData();
+  formData.set("email", userName);
+  formData.set("password", password);
+  formData.set("remember_login", "on");
+  formData.set("_do", "loginDialog-login-loginForm-submit");
+  formData.set("login", "Přihlásit se");
+
+  const r1 = await fetch(
+    "https://prehraj.to/?frm=loginDialog-login-loginForm",
+    {
+      headers: {
+        ...headers,
+        ...anonymousOptions.headers,
+        accept: "application/json",
+      },
+      body: formData,
+      method: "POST",
     },
-    redirect: "manual",
-    body: `email=${encodeURIComponent(userName)}&password=${encodeURIComponent(
-      password,
-    )}&remember=on&_submit=P%C5%99ihl%C3%A1sit+se&_do=login-loginForm-submit`,
-    method: "POST",
-  });
+  );
+
   const cookies = extractCookies(r1);
+  if (!cookies.some((c) => c.name === "access_token")) {
+    return {};
+  }
 
   return {
     headers: headerCookies(cookies),
@@ -57,7 +71,7 @@ async function loginAnonymous() {
 
 const fetchOptionsCache = new Map<
   string,
-  { created: number; headers: Record<string, unknown> }
+  { created: number; options: Record<string, unknown> }
 >();
 /**
  * Get headers for authenticated response
@@ -67,7 +81,7 @@ async function getFetchOptions(userName: string, password: string) {
   const fetchCache = fetchOptionsCache.get(cacheKey);
   if (fetchCache) {
     if (fetchCache.created && fetchCache.created > Date.now() - 8_400_000) {
-      return fetchCache.headers;
+      return fetchCache.options;
     } else {
       fetchOptionsCache.delete(cacheKey);
     }
@@ -76,7 +90,7 @@ async function getFetchOptions(userName: string, password: string) {
   const newFetchOptions = await login(userName, password);
   fetchOptionsCache.set(cacheKey, {
     created: Date.now(),
-    headers: newFetchOptions,
+    options: newFetchOptions,
   });
   return newFetchOptions;
 }
@@ -232,6 +246,14 @@ export function getResolver(): Resolver {
         addonConfig.prehrajtoPassword,
       );
       return getResultStreamUrls(resolverId, fetchOptions);
+    },
+
+    cleanup: async () => {
+      fetchOptionsCache.clear();
+    },
+
+    debug: () => {
+      return Object.fromEntries(fetchOptionsCache);
     },
   };
 }

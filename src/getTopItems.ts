@@ -44,6 +44,8 @@ export type Resolver = {
     resolverId: string,
     config: UserConfigData,
   ) => Promise<StreamDetails>;
+  cleanup?: () => Promise<void>;
+  debug?: () => unknown;
 };
 
 export async function getTopItems(
