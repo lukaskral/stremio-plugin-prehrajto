@@ -1,6 +1,6 @@
 {
   "name": "stremio-plugin-prehrajto",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "",
   "type": "module",
   "engines": {
@@ -21,6 +21,7 @@
     "express": "^5.0.1",
     "fetch-socks": "^1.3.2",
     "linkedom": "^0.18.6",
+    "moviedb-promise": "^4.0.7",
     "prettier": "^3.4.2",
     "stremio-addon-sdk": "^1.6.10",
     "undici": "^7.2.0",

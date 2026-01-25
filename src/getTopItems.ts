@@ -121,22 +121,19 @@ function getSearchTerms(meta: Meta): string[] {
     const eps = String(meta.episode.season).padStart(2, "0");
     const epn = String(meta.episode.number).padStart(2, "0");
 
-    if (meta.names.en) {
-      searches.push(`${meta.names.en} S${eps}E${epn}`);
-      searches.push(`${meta.names.en} ${eps}x${epn}`);
-    }
-    if (meta.names.cs) {
-      searches.push(`${meta.names.cs} S${eps}E${epn}`);
-      searches.push(`${meta.names.cs} ${eps}x${epn}`);
-    }
+    searches.push(
+      ...Object.values(meta.names).flatMap((name) => [
+        `${name} S${eps}E${epn}`,
+        `${name} ${eps}x${epn}`,
+      ]),
+    );
   } else {
     const releaseYear = new Date(meta.released).getFullYear();
-    if (meta.names.en) {
-      searches.push(`${meta.names.en} ${releaseYear}`);
-    }
-    if (meta.names.cs) {
-      searches.push(`${meta.names.cs} ${releaseYear}`);
-    }
+    searches.push(
+      ...Object.values(meta.names).flatMap((name) => [
+        `${name} ${releaseYear}`,
+      ]),
+    );
   }
   return searches;
 }

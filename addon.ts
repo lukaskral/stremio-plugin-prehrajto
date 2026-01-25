@@ -4,7 +4,7 @@ import SDK from "stremio-addon-sdk";
 
 import { getTopItems } from "./src/getTopItems.ts";
 import { getMeta } from "./src/meta.ts";
-import { getImdbDetails } from "./src/service/imdb.ts";
+import { getTmdbDetails } from "./src/service/tmdb.ts";
 import {
   type ConfigField,
   type UserConfigData,
@@ -48,16 +48,16 @@ builder.defineStreamHandler(async (props) => {
     config: UserConfigData;
   };
   try {
-    const [baseMeta, csMeta] = await Promise.all([
+    const [baseMeta, tmdbMeta] = await Promise.all([
       getMeta(type, id),
-      getImdbDetails(id, "cs"),
+      getTmdbDetails(id, "cs"),
     ]);
 
     const meta = {
       ...baseMeta,
       names: {
         en: baseMeta.name,
-        cs: csMeta?.alternateName,
+        ...tmdbMeta?.names,
       },
     };
 

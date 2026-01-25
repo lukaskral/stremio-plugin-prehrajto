@@ -10,7 +10,7 @@ export type OriginalMeta = {
   imdb_id: string;
   moviedb_id: number;
   name: string;
-  names: Record<"en" | "cs", string>;
+  names: Record<string, string>;
   popularity: number;
   poster: string;
   released: string;
