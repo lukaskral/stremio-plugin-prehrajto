@@ -3,6 +3,8 @@ import { type Request, type Response } from "express";
 import { type UserConfigData } from "../userConfig/userConfig.ts";
 import { getActiveResolvers, getAllResolvers } from "../utils/resolvers.ts";
 
+const NL = "\r\n\r\n";
+
 async function getMediaUrl(
   resolver: string,
   id: string,
@@ -35,7 +37,8 @@ export default async function handler(req: Request, res: Response) {
     res.end();
   } catch (e) {
     console.error(e);
-    res.writeHead(500);
+    res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+    res.write((e instanceof Error ? e.message : String(e)) + NL);
     res.end();
   }
 }

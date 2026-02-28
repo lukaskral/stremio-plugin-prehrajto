@@ -38,8 +38,9 @@ export default async function test(req: Request, res: Response) {
       return;
     }
 
+    const searchResult = results[0];
     res.write(
-      `/media/${encodeURIComponent(resolver.resolverName)}/${encodeURIComponent(results[0].resolverId)}` +
+      `/media/${encodeURIComponent(resolver.resolverName)}/${encodeURIComponent(searchResult.resolverId)}?config=${encodeURIComponent(JSON.stringify({}))}` +
         NL,
     );
 
