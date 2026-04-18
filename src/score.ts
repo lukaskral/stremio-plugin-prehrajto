@@ -18,7 +18,8 @@ export function computeScore(meta: Meta, searchResult: SearchResult) {
       geKeywordsScore(meta, searchResult),
     ];
 
-    return coefficients.reduce((ret, part) => ret * part, 1);
+    const score = coefficients.reduce((ret, part) => ret * part, 1);
+    return score;
   } catch (e) {
     console.error(e);
     return 0.5;
@@ -92,7 +93,7 @@ function getRuntimeScore(meta: Meta, searchResult: SearchResult) {
   const runtime = parseInt(meta.runtime) * 60; // run time in seconds
   const resultRuntime = searchResult.duration;
   return runtime && resultRuntime
-    ? 1 - Math.abs(runtime - resultRuntime) / runtime
+    ? 1 - Math.min(Math.abs(runtime - resultRuntime) / runtime, 0.99)
     : 0.8;
 }
 
