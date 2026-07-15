@@ -1,10 +1,10 @@
 {
-  "name": "stremio-plugin-czshare",
+  "name": "stremio-plugin-czstreams",
   "version": "0.1.11",
   "description": "",
   "type": "module",
   "engines": {
-    "node": "23.*"
+    "node": "24.*"
   },
   "scripts": {
     "start": "node --experimental-strip-types server.ts",
@@ -13,7 +13,6 @@
     "check:tsc": "tsc --noEmit",
     "check:lint": "eslint .",
     "test": "node --experimental-strip-types test.ts",
-    "deploy": "beamup",
     "proxy": "npx proxy-lists getProxies --countries=\"cz,sk\" --anonymity-levels=\"elite\" --stdout"
   },
   "dependencies": {
