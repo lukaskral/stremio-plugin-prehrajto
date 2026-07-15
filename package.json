@@ -7,6 +7,7 @@
     "node": "24.*"
   },
   "scripts": {
+    "build": "tsc",
     "start": "node --experimental-strip-types server.ts",
     "start:install": "node --experimental-strip-types server.ts --install",
     "check": "npm run check:tsc & npm run check:lint",
