@@ -44,7 +44,10 @@ async function login(userName: string, password: string) {
 
   const cookies = extractCookies(r1);
   if (!cookies.some((c) => c.name === "access_token")) {
-    return {};
+    return {
+      _debug: "cookie not found",
+      ...anonymousOptions,
+    };
   }
 
   return {
@@ -252,8 +255,17 @@ export function getResolver(): Resolver {
       fetchOptionsCache.clear();
     },
 
-    debug: () => {
-      return Object.fromEntries(fetchOptionsCache);
+    debug: async (addonConfig) => {
+      const cacheKey = `${addonConfig.prehrajtoUsername}:${addonConfig.prehrajtoPassword}`;
+      const cache = fetchOptionsCache.get(cacheKey);
+      const headers = await login(
+        addonConfig.prehrajtoUsername,
+        addonConfig.prehrajtoPassword,
+      );
+      return {
+        cache,
+        headers,
+      };
     },
   };
 }

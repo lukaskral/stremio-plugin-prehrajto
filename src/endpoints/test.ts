@@ -18,8 +18,10 @@ export default async function test(req: Request, res: Response) {
     const resolver = getResolver();
     const initialized = await resolver.init();
     const validated = await resolver.validateConfig(addonConfig);
-    const debugInfo = resolver.debug();
-    res.write(JSON.stringify({ initialized, validated, debugInfo }) + NL);
+    const debugInfo = resolver.debug ? await resolver.debug(addonConfig) : null;
+    res.write(
+      JSON.stringify({ initialized, validated, debugInfo }, null, 4) + NL,
+    );
 
     if (breakpoint === "0") {
       res.end("Breakpoint 0");
