@@ -25,10 +25,7 @@ serveHTTP(addonInterface, {
     server.removeAllListeners("request");
     server.on("request", async (req: Request, res: Response) => {
       try {
-        if (
-          req.url &&
-          req.url.split("?", 1)[0] === "/internal/service-proxy"
-        ) {
+        if (req.url && req.url.split("?", 1)[0] === "/internal/service-proxy") {
           await serviceProxyHandler(req, res);
           return;
         }
