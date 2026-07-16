@@ -6,14 +6,25 @@ const NL = "\r\n\r\n";
 
 export default async function test(req: Request, res: Response) {
   try {
-    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
     const url = new URL(req.protocol + "://" + req.hostname + req.url);
     const term = url.searchParams.get("q");
     const breakpoint = url.searchParams.get("breakpoint");
 
+    const userName = process.env.PREHRAJTO_DEBUG_USERNAME;
+    const password = process.env.PREHRAJTO_DEBUG_PASSWORD;
+    if (!userName || !password) {
+      res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end(
+        "PREHRAJTO_DEBUG_USERNAME and PREHRAJTO_DEBUG_PASSWORD are required" +
+          NL,
+      );
+      return;
+    }
+
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
     const addonConfig = {
-      prehrajtoUsername: "canifi7158@matmayer.com",
-      prehrajtoPassword: "canifi7158",
+      prehrajtoUsername: userName,
+      prehrajtoPassword: password,
     };
     const resolver = getResolver();
     const initialized = await resolver.init();
@@ -74,7 +85,7 @@ export default async function test(req: Request, res: Response) {
     }
 
     res.end("OK: " + response.status);
-  } catch (e) {
+  } catch (e: unknown) {
     res.write(String(e) + NL);
     res.end("error");
   }
