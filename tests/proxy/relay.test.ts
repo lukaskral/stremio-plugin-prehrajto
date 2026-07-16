@@ -9,8 +9,8 @@ import {
 import { decodeBody, type ProxyRequestEnvelope } from "../../src/proxy/protocol.ts";
 import {
   executeProxyRequest,
-  ProxyRelayError,
   type ProxyLogger,
+  ProxyRelayError,
 } from "../../src/proxy/relay.ts";
 
 const serverConfig: ProxyServerConfig = {

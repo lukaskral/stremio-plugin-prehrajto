@@ -1,4 +1,4 @@
-import { getProxyClientConfig, type Environment } from "./config.ts";
+import { type Environment,getProxyClientConfig } from "./config.ts";
 import {
   decodeBody,
   encodeBody,

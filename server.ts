@@ -6,6 +6,7 @@ import SDK from "stremio-addon-sdk";
 import { addonInterface } from "./addon.ts";
 import cleanupHandler from "./src/endpoints/cleanup.ts";
 import mediaHandler from "./src/endpoints/getMediaUrl.ts";
+import serviceProxyHandler from "./src/endpoints/serviceProxy.ts";
 import testHandler from "./src/endpoints/test.ts";
 
 const serveHTTP = SDK.serveHTTP as unknown as (
@@ -24,8 +25,16 @@ serveHTTP(addonInterface, {
     server.removeAllListeners("request");
     server.on("request", async (req: Request, res: Response) => {
       try {
+        if (
+          req.url &&
+          req.url.split("?", 1)[0] === "/internal/service-proxy"
+        ) {
+          await serviceProxyHandler(req, res);
+          return;
+        }
+
         if (req.url && req.url.startsWith("/media/")) {
-          mediaHandler(req, res);
+          await mediaHandler(req, res);
           return;
         }
 
