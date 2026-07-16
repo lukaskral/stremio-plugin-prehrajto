@@ -8,11 +8,14 @@ import cleanupHandler from "./src/endpoints/cleanup.ts";
 import mediaHandler from "./src/endpoints/getMediaUrl.ts";
 import testHandler from "./src/endpoints/test.ts";
 
-(
-  SDK.serveHTTP(addonInterface, {
-    port: process.env.PORT ? Number(process.env.PORT) : 52932,
-  }) as any as Promise<{ server: Express; url: string }>
-)
+const serveHTTP = SDK.serveHTTP as unknown as (
+  addon: typeof addonInterface,
+  options: { port: number },
+) => Promise<{ server: Express; url: string }>;
+
+serveHTTP(addonInterface, {
+  port: process.env.PORT ? Number(process.env.PORT) : 52932,
+})
   .then(({ server }) => {
     // grab SDK's existing 'request' listeners
     const originalListeners = server.listeners("request").slice();

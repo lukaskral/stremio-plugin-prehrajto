@@ -74,7 +74,7 @@ export default async function test(req: Request, res: Response) {
     }
 
     res.end("OK: " + response.status);
-  } catch (e: any) {
+  } catch (e) {
     res.write(String(e) + NL);
     res.end("error");
   }

@@ -10,7 +10,7 @@ export default async function cleanup(req: Request, res: Response) {
     const resolvers = await initResolvers();
     resolvers.map((r) => r.cleanup());
     res.end("OK");
-  } catch (e: any) {
+  } catch (e) {
     res.write(String(e) + NL);
     res.end("error");
   }
