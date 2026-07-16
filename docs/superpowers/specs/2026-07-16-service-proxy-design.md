@@ -29,7 +29,7 @@ Proxy use is opt-in. A local instance enables it with:
 
 ```dotenv
 SERVICE_PROXY_URL=https://deployed-addon.example/internal/service-proxy
-SERVICE_PROXY_TOKEN=a-long-random-shared-secret
+SERVICE_PROXY_CLIENT_TOKEN=a-long-random-shared-secret
 ```
 
 The deployed server uses:
@@ -40,7 +40,7 @@ SERVICE_PROXY_ALLOWED_HOSTS=prehraj.to
 SERVICE_PROXY_DEBUG=false
 ```
 
-`SERVICE_PROXY_URL` and `SERVICE_PROXY_TOKEN` must either both be present on a proxy client or both be absent. Partial configuration is an error. The relay endpoint remains unavailable when its token is unset. `SERVICE_PROXY_ALLOWED_HOSTS` is a comma-separated exact-hostname allowlist and defaults to `prehraj.to`.
+`SERVICE_PROXY_URL` and `SERVICE_PROXY_CLIENT_TOKEN` must either both be present on a proxy client or both be absent. Partial configuration is an error. `SERVICE_PROXY_CLIENT_TOKEN` and the deployed server's `SERVICE_PROXY_TOKEN` contain the same secret but use distinct names so a server-only token cannot accidentally enable client proxy mode. The relay endpoint remains unavailable when its token is unset. `SERVICE_PROXY_ALLOWED_HOSTS` is a comma-separated exact-hostname allowlist and defaults to `prehraj.to`.
 
 The existing debug endpoint must not contain credentials in source code. Optional PrehrajTo debug credentials come from environment variables and the endpoint reports a configuration error when they are absent.
 
