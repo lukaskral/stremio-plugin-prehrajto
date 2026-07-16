@@ -1,6 +1,7 @@
 import { parseHTML } from "linkedom";
 
 import type { Resolver, StreamDetails } from "../getTopItems.ts";
+import { serviceFetch } from "../proxy/serviceFetch.ts";
 import { sizeToBytes, timeToSeconds } from "../utils/convert.ts";
 import { extractCookies, headerCookies } from "../utils/cookies.ts";
 import commonHeaders, { type FetchOptions } from "../utils/headers.ts";
@@ -17,8 +18,12 @@ const headers = {
 /**
  * Get headers for authenticated response
  */
-async function login(userName: string, password: string) {
-  const anonymousOptions = await loginAnonymous();
+async function login(
+  userName: string,
+  password: string,
+  fetchImpl: typeof fetch,
+) {
+  const anonymousOptions = await loginAnonymous(fetchImpl);
   if (!userName) {
     return anonymousOptions;
   }
@@ -29,7 +34,7 @@ async function login(userName: string, password: string) {
   formData.set("_do", "loginDialog-login-loginForm-submit");
   formData.set("login", "Přihlásit se");
 
-  const r1 = await fetch(
+  const r1 = await fetchImpl(
     "https://prehraj.to/?frm=loginDialog-login-loginForm",
     {
       headers: {
@@ -55,8 +60,8 @@ async function login(userName: string, password: string) {
   };
 }
 
-async function loginAnonymous() {
-  const result = await fetch("https://prehraj.to/", {
+async function loginAnonymous(fetchImpl: typeof fetch) {
+  const result = await fetchImpl("https://prehraj.to/", {
     headers: {
       ...headers,
       Referer: "https://prehraj.to/",
@@ -79,7 +84,11 @@ const fetchOptionsCache = new Map<
 /**
  * Get headers for authenticated response
  */
-async function getFetchOptions(userName: string, password: string) {
+async function getFetchOptions(
+  userName: string,
+  password: string,
+  fetchImpl: typeof fetch,
+) {
   const cacheKey = `${userName}:${password}`;
   const fetchCache = fetchOptionsCache.get(cacheKey);
   if (fetchCache) {
@@ -90,7 +99,7 @@ async function getFetchOptions(userName: string, password: string) {
     }
   }
 
-  const newFetchOptions = await login(userName, password);
+  const newFetchOptions = await login(userName, password, fetchImpl);
   fetchOptionsCache.set(cacheKey, {
     created: Date.now(),
     options: newFetchOptions,
@@ -100,10 +109,11 @@ async function getFetchOptions(userName: string, password: string) {
 
 async function getResultStreamUrls(
   resolverId: string,
+  fetchImpl: typeof fetch,
   fetchOptions: FetchOptions = {},
 ): Promise<StreamDetails> {
   const detailPageUrl = `https://prehraj.to${resolverId}`;
-  const pageResponse = await fetch(detailPageUrl, {
+  const pageResponse = await fetchImpl(detailPageUrl, {
     ...fetchOptions,
     headers: {
       ...headers,
@@ -164,9 +174,10 @@ async function getResultStreamUrls(
 
 async function getSearchResults(
   title: string,
+  fetchImpl: typeof fetch,
   fetchOptions: FetchOptions = {},
 ) {
-  const pageResponse = await fetch(
+  const pageResponse = await fetchImpl(
     `https://prehraj.to/hledej/${encodeURIComponent(title)}?vp-page=0`,
     {
       ...fetchOptions,
@@ -205,7 +216,7 @@ async function getSearchResults(
   return results;
 }
 
-export function getResolver(): Resolver {
+export function getResolver(fetchImpl: typeof fetch = serviceFetch): Resolver {
   return {
     resolverName: "PrehrajTo",
 
@@ -231,6 +242,7 @@ export function getResolver(): Resolver {
       const fetchOptions = await getFetchOptions(
         addonConfig.prehrajtoUsername,
         addonConfig.prehrajtoPassword,
+        fetchImpl,
       );
       return "headers" in fetchOptions;
     },
@@ -239,16 +251,18 @@ export function getResolver(): Resolver {
       const fetchOptions = await getFetchOptions(
         addonConfig.prehrajtoUsername,
         addonConfig.prehrajtoPassword,
+        fetchImpl,
       );
-      return getSearchResults(title, fetchOptions);
+      return getSearchResults(title, fetchImpl, fetchOptions);
     },
 
     resolve: async (resolverId, addonConfig) => {
       const fetchOptions = await getFetchOptions(
         addonConfig.prehrajtoUsername,
         addonConfig.prehrajtoPassword,
+        fetchImpl,
       );
-      return getResultStreamUrls(resolverId, fetchOptions);
+      return getResultStreamUrls(resolverId, fetchImpl, fetchOptions);
     },
 
     cleanup: async () => {
@@ -258,13 +272,15 @@ export function getResolver(): Resolver {
     debug: async (addonConfig) => {
       const cacheKey = `${addonConfig.prehrajtoUsername}:${addonConfig.prehrajtoPassword}`;
       const cache = fetchOptionsCache.get(cacheKey);
-      const headers = await login(
+      const loginOptions = await login(
         addonConfig.prehrajtoUsername,
         addonConfig.prehrajtoPassword,
+        fetchImpl,
       );
       return {
-        cache,
-        headers,
+        cached: Boolean(cache),
+        cacheCreated: cache?.created ?? null,
+        authenticated: "headers" in loginOptions && !("_debug" in loginOptions),
       };
     },
   };

@@ -4,7 +4,7 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "lib": [
-      "ES2021"
+      "ES2022"
     ],
     "module": "nodeNext",
     "moduleResolution": "nodeNext",
@@ -22,6 +22,7 @@
     "target": "ES2018",
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "tests/**/*"
   ]
 }
