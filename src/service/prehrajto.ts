@@ -209,7 +209,8 @@ async function getSearchResults(
       ),
       format: linkEl
         .querySelector(".video__tag--format use")
-        ?.getAttribute("xlink:href"), // TODO
+        ?.getAttribute("xlink:href")
+        ?? linkEl.querySelector(".video__tag--format .format__text")?.textContent.trim(),
       size: sizeToBytes(sizeStr),
     };
   });

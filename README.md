@@ -18,13 +18,9 @@ npm test
 npm run check
 ```
 
-The previous live PrehrajTo smoke test remains available separately:
+`npm test` runs the Vitest utility, PrehrajTo fixture, service-proxy unit, and service-proxy integration tests. The PrehrajTo fixture tests use checked-in HTML snapshots and the proxy tests use local fakes; neither contacts the live service.
 
-```bash
-npm run test:live
-```
-
-That command contacts external services and may consume account or network resources. The normal `npm test` command uses local fakes and does not require PrehrajTo credentials.
+The fixture provenance and refresh policy are documented in `tests/fixtures/prehrajto/README.md`.
 
 ## Service proxy
 

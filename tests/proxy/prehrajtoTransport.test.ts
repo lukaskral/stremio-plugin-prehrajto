@@ -1,9 +1,8 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, it } from "vitest";
 
 import { getResolver } from "../../src/service/prehrajto.ts";
 
-test("PrehrajTo uses the injected transport only for control-plane requests", async () => {
+it("PrehrajTo uses the injected transport only for control-plane requests", async () => {
   const calls: Array<{
     url: string;
     method: string;
@@ -53,27 +52,25 @@ test("PrehrajTo uses the injected transport only for control-plane requests", as
     prehrajtoPassword: "not-a-real-secret",
   };
 
-  assert.equal(await resolver.validateConfig(config), true);
+  expect(await resolver.validateConfig(config)).toBe(true);
   const results = await resolver.search("Movie 2026", config);
-  assert.equal(results.length, 1);
+  expect(results).toHaveLength(1);
   const details = await resolver.resolve(results[0].resolverId, config);
-  assert.equal(details.video, "https://media.example.test/movie.mp4");
+  expect(details.video).toBe("https://media.example.test/movie.mp4");
 
-  assert.deepEqual(
+  expect(
     calls.map(({ url, method }) => [url, method]),
-    [
+  ).toEqual([
       ["https://prehraj.to/", "GET"],
       ["https://prehraj.to/?frm=loginDialog-login-loginForm", "POST"],
       ["https://prehraj.to/hledej/Movie%202026?vp-page=0", "GET"],
       ["https://prehraj.to/video/1", "GET"],
-    ],
-  );
-  assert.ok(calls[1].body instanceof FormData);
-  assert.equal(calls[2].headers.get("cookie"), "access_token=two");
-  assert.equal(
+    ]);
+  expect(calls[1].body).toBeInstanceOf(FormData);
+  expect(calls[2].headers.get("cookie")).toBe("access_token=two");
+  expect(
     calls.some(({ url }) => url.startsWith("https://media.example.test/")),
-    false,
-  );
+  ).toBe(false);
 
   await resolver.cleanup?.();
 });

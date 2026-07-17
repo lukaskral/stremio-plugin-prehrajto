@@ -16,7 +16,7 @@ export function timeToSeconds(time: string) {
  * @param {string} sizeStr
  */
 export function sizeToBytes(sizeStr: string) {
-  const sizeNum = parseFloat(sizeStr.replace(".", ","));
+  const sizeNum = parseFloat(sizeStr.replace(",", "."));
   const sizeMul = sizeStr.includes("KB")
     ? 1024
     : sizeStr.includes("MB")

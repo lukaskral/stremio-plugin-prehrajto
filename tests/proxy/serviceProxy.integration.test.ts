@@ -1,9 +1,8 @@
-import assert from "node:assert/strict";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import test from "node:test";
 
 import type { Request, Response } from "express";
+import { expect, it } from "vitest";
 
 import { createServiceProxyHandler } from "../../src/endpoints/serviceProxy.ts";
 import type { ProxyErrorEnvelope } from "../../src/proxy/protocol.ts";
@@ -34,39 +33,49 @@ function nodeListener(
   };
 }
 
-test("endpoint enforces configuration, method, authentication, and body limits", async (t) => {
-  await t.test("missing server token disables the endpoint", async () => {
-    const handler = createServiceProxyHandler({
-      env: {},
-      logger: silentLogger,
-      createRequestId: () => "request-disabled",
-    });
-    const relay = await startServer(nodeListener(handler));
-    t.after(relay.close);
-    const response = await fetch(relay.url, { method: "POST", body: "{}" });
-    assert.equal(response.status, 503);
-    const body = (await response.json()) as ProxyErrorEnvelope;
-    assert.equal(body.error.code, "PROXY_DISABLED");
+it("missing server token disables the endpoint", async () => {
+  const handler = createServiceProxyHandler({
+    env: {},
+    logger: silentLogger,
+    createRequestId: () => "request-disabled",
   });
+  const relay = await startServer(nodeListener(handler));
+  try {
+    const response = await fetch(relay.url, { method: "POST", body: "{}" });
+    expect(response.status).toBe(503);
+    const body = (await response.json()) as ProxyErrorEnvelope;
+    expect(body.error.code).toBe("PROXY_DISABLED");
+  } finally {
+    await relay.close();
+  }
+});
 
+it("rejects non-POST endpoint requests", async () => {
   const handler = createServiceProxyHandler({
     env: { SERVICE_PROXY_TOKEN: "secret" },
     logger: silentLogger,
     createRequestId: () => "request-auth",
   });
   const relay = await startServer(nodeListener(handler));
-  t.after(relay.close);
+  try {
+    expect((await fetch(relay.url)).status).toBe(405);
+  } finally {
+    await relay.close();
+  }
+});
 
-  await t.test("rejects non-POST endpoint requests", async () => {
-    assert.equal((await fetch(relay.url)).status, 405);
+it("rejects missing and incorrect bearer tokens", async () => {
+  const handler = createServiceProxyHandler({
+    env: { SERVICE_PROXY_TOKEN: "secret" },
+    logger: silentLogger,
+    createRequestId: () => "request-auth",
   });
-
-  await t.test("rejects missing and incorrect bearer tokens", async () => {
-    assert.equal(
+  const relay = await startServer(nodeListener(handler));
+  try {
+    expect(
       (await fetch(relay.url, { method: "POST", body: "{}" })).status,
-      401,
-    );
-    assert.equal(
+    ).toBe(401);
+    expect(
       (
         await fetch(relay.url, {
           method: "POST",
@@ -77,11 +86,20 @@ test("endpoint enforces configuration, method, authentication, and body limits",
           body: "{}",
         })
       ).status,
-      401,
-    );
-  });
+    ).toBe(401);
+  } finally {
+    await relay.close();
+  }
+});
 
-  await t.test("rejects malformed and oversized JSON safely", async () => {
+it("rejects malformed and oversized JSON safely", async () => {
+  const handler = createServiceProxyHandler({
+    env: { SERVICE_PROXY_TOKEN: "secret" },
+    logger: silentLogger,
+    createRequestId: () => "request-auth",
+  });
+  const relay = await startServer(nodeListener(handler));
+  try {
     const malformed = await fetch(relay.url, {
       method: "POST",
       headers: {
@@ -90,9 +108,9 @@ test("endpoint enforces configuration, method, authentication, and body limits",
       },
       body: "not-json",
     });
-    assert.equal(malformed.status, 400);
+    expect(malformed.status).toBe(400);
     const malformedBody = (await malformed.json()) as ProxyErrorEnvelope;
-    assert.equal(malformedBody.error.code, "INVALID_REQUEST");
+    expect(malformedBody.error.code).toBe("INVALID_REQUEST");
 
     const oversized = await fetch(relay.url, {
       method: "POST",
@@ -102,14 +120,16 @@ test("endpoint enforces configuration, method, authentication, and body limits",
       },
       body: "x".repeat(512 * 1024 + 1),
     });
-    assert.equal(oversized.status, 413);
+    expect(oversized.status).toBe(413);
     const body = (await oversized.json()) as ProxyErrorEnvelope;
-    assert.equal(body.error.code, "REQUEST_TOO_LARGE");
-    assert.equal(JSON.stringify(body).includes("Bearer secret"), false);
-  });
+    expect(body.error.code).toBe("REQUEST_TOO_LARGE");
+    expect(JSON.stringify(body)).not.toContain("Bearer secret");
+  } finally {
+    await relay.close();
+  }
 });
 
-test("client, relay endpoint, and fake upstream preserve login and HTML traffic", async (t) => {
+it("client, relay endpoint, and fake upstream preserve login and HTML traffic", async () => {
   const requests: Array<{
     path: string;
     method: string;
@@ -151,7 +171,6 @@ test("client, relay endpoint, and fake upstream preserve login and HTML traffic"
       res.end("missing");
     });
   });
-  t.after(upstream.close);
 
   const upstreamFetch = (async (input, init) => {
     const original = new URL(String(input));
@@ -165,54 +184,55 @@ test("client, relay endpoint, and fake upstream preserve login and HTML traffic"
     createRequestId: () => "request-integration",
   });
   const relay = await startServer(nodeListener(handler));
-  t.after(relay.close);
-  const serviceFetch = createServiceFetch({
-    env: {
-      SERVICE_PROXY_URL: relay.url,
-      SERVICE_PROXY_CLIENT_TOKEN: "secret",
-    },
-  });
+  try {
+    const serviceFetch = createServiceFetch({
+      env: {
+        SERVICE_PROXY_URL: relay.url,
+        SERVICE_PROXY_CLIENT_TOKEN: "secret",
+      },
+    });
 
-  const anonymous = await serviceFetch("https://prehraj.to/");
-  assert.deepEqual(anonymous.headers.getSetCookie(), [
-    "anonymous=one; Path=/",
-  ]);
+    const anonymous = await serviceFetch("https://prehraj.to/");
+    expect(anonymous.headers.getSetCookie()).toEqual([
+      "anonymous=one; Path=/",
+    ]);
 
-  const form = new FormData();
-  form.set("email", "debug@example.test");
-  form.set("password", "not-a-real-secret");
-  const login = await serviceFetch("https://prehraj.to/login", {
-    method: "POST",
-    headers: { cookie: "anonymous=one" },
-    body: form,
-  });
-  assert.deepEqual(login.headers.getSetCookie(), [
-    "access_token=two; Path=/",
-  ]);
-  assert.match(
-    await (
-      await serviceFetch("https://prehraj.to/search", {
-        headers: { cookie: "access_token=two" },
-      })
-    ).text(),
-    /video--link/,
-  );
-  assert.match(
-    await (await serviceFetch("https://prehraj.to/detail")).text(),
-    /var sources/,
-  );
+    const form = new FormData();
+    form.set("email", "debug@example.test");
+    form.set("password", "not-a-real-secret");
+    const login = await serviceFetch("https://prehraj.to/login", {
+      method: "POST",
+      headers: { cookie: "anonymous=one" },
+      body: form,
+    });
+    expect(login.headers.getSetCookie()).toEqual([
+      "access_token=two; Path=/",
+    ]);
+    expect(
+      await (
+        await serviceFetch("https://prehraj.to/search", {
+          headers: { cookie: "access_token=two" },
+        })
+      ).text(),
+    ).toMatch(/video--link/);
+    expect(await (await serviceFetch("https://prehraj.to/detail")).text()).toMatch(
+      /var sources/,
+    );
 
-  assert.deepEqual(
-    requests.map(({ path, method }) => [path, method]),
-    [
+    expect(requests.map(({ path, method }) => [path, method])).toEqual([
       ["/", "GET"],
       ["/login", "POST"],
       ["/search", "GET"],
       ["/detail", "GET"],
-    ],
-  );
-  assert.equal(requests[1].cookie, "anonymous=one");
-  assert.match(requests[1].contentType ?? "", /multipart\/form-data; boundary=/);
-  assert.match(requests[1].body, /debug@example\.test/);
-  assert.equal(requests[2].cookie, "access_token=two");
+    ]);
+    expect(requests[1].cookie).toBe("anonymous=one");
+    expect(requests[1].contentType ?? "").toMatch(
+      /multipart\/form-data; boundary=/,
+    );
+    expect(requests[1].body).toMatch(/debug@example\.test/);
+    expect(requests[2].cookie).toBe("access_token=two");
+  } finally {
+    await relay.close();
+    await upstream.close();
+  }
 });

@@ -10,11 +10,11 @@
     "build": "tsc",
     "start": "node --env-file-if-exists=.env --experimental-strip-types server.ts",
     "start:install": "node --env-file-if-exists=.env --experimental-strip-types server.ts --install",
-    "check": "npm run check:tsc && npm run check:lint",
+    "check": "npm run check:tsc && npm run check:lint && npm test",
     "check:tsc": "tsc --noEmit",
     "check:lint": "eslint .",
-    "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
-    "test:live": "node --experimental-strip-types test.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "proxy": "npx proxy-lists getProxies --countries=\"cz,sk\" --anonymity-levels=\"elite\" --stdout"
   },
   "dependencies": {
@@ -35,6 +35,7 @@
     "globals": "^15.14.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.19.0"
+    "typescript-eslint": "^8.19.0",
+    "vitest": "^4.1.10"
   }
 }

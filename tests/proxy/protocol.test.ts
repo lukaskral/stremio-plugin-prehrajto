@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, it } from "vitest";
 
 import {
   decodeBody,
@@ -11,43 +10,41 @@ import {
   isProxyResponseEnvelope,
 } from "../../src/proxy/protocol.ts";
 
-test("body encoding is binary safe", () => {
+it("body encoding is binary safe", () => {
   const body = Uint8Array.from([0, 1, 127, 128, 255]);
-  assert.deepEqual(decodeBody(encodeBody(body)), body);
+  expect(decodeBody(encodeBody(body))).toEqual(body);
 });
 
-test("header pairs preserve multiple set-cookie values", () => {
+it("header pairs preserve multiple set-cookie values", () => {
   const headers = headersFromPairs([
     ["content-type", "text/html"],
     ["set-cookie", "session=one; Path=/"],
     ["set-cookie", "access=two; Path=/"],
   ]);
-  assert.deepEqual(headers.getSetCookie(), [
+  expect(headers.getSetCookie()).toEqual([
     "session=one; Path=/",
     "access=two; Path=/",
   ]);
-  assert.deepEqual(
+  expect(
     headersToPairs(headers).filter(([name]) => name === "set-cookie"),
-    [
+  ).toEqual([
       ["set-cookie", "session=one; Path=/"],
       ["set-cookie", "access=two; Path=/"],
-    ],
-  );
+    ]);
 });
 
-test("envelope guards reject malformed JSON", () => {
-  assert.equal(isProxyRequestEnvelope({ method: "GET" }), false);
-  assert.equal(isProxyResponseEnvelope({ status: "200" }), false);
-  assert.equal(isProxyErrorEnvelope({ error: { code: 1 } }), false);
-  assert.equal(
+it("envelope guards reject malformed JSON", () => {
+  expect(isProxyRequestEnvelope({ method: "GET" })).toBe(false);
+  expect(isProxyResponseEnvelope({ status: "200" })).toBe(false);
+  expect(isProxyErrorEnvelope({ error: { code: 1 } })).toBe(false);
+  expect(
     isProxyRequestEnvelope({
       url: "https://prehraj.to/",
       method: "GET",
       headers: [["accept", "text/html"]],
     }),
-    true,
-  );
-  assert.equal(
+  ).toBe(true);
+  expect(
     isProxyResponseEnvelope({
       status: 200,
       statusText: "OK",
@@ -56,9 +53,8 @@ test("envelope guards reject malformed JSON", () => {
       bodyBase64: "",
       requestId: "request-1",
     }),
-    true,
-  );
-  assert.equal(
+  ).toBe(true);
+  expect(
     isProxyErrorEnvelope({
       error: {
         code: "UPSTREAM_TIMEOUT",
@@ -66,6 +62,5 @@ test("envelope guards reject malformed JSON", () => {
         requestId: "request-1",
       },
     }),
-    true,
-  );
+  ).toBe(true);
 });

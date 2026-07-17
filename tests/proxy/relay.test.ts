@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, it } from "vitest";
 
 import {
   MAX_PROXY_REQUEST_BYTES,
@@ -29,37 +28,35 @@ function dependencies(fetchImpl: typeof fetch, logger = silentLogger) {
   return { fetchImpl, requestId: "request-1", logger };
 }
 
-test("rejects unsafe destinations and methods before fetching", async (t) => {
-  const cases: Array<[string, Partial<ProxyRequestEnvelope>]> = [
-    ["plain HTTP", { url: "http://prehraj.to/" }],
-    ["embedded credentials", { url: "https://user:pass@prehraj.to/" }],
-    ["unlisted host", { url: "https://example.com/" }],
-    ["host suffix bypass", { url: "https://prehraj.to.example.com/" }],
-    ["unlisted port", { url: "https://prehraj.to:8443/" }],
-    ["unsupported method", { method: "CONNECT" }],
-  ];
+const cases: Array<[string, Partial<ProxyRequestEnvelope>]> = [
+  ["plain HTTP", { url: "http://prehraj.to/" }],
+  ["embedded credentials", { url: "https://user:pass@prehraj.to/" }],
+  ["unlisted host", { url: "https://example.com/" }],
+  ["host suffix bypass", { url: "https://prehraj.to.example.com/" }],
+  ["unlisted port", { url: "https://prehraj.to:8443/" }],
+  ["unsupported method", { method: "CONNECT" }],
+];
 
-  for (const [name, patch] of cases) {
-    await t.test(name, async () => {
-      let calls = 0;
-      const fetchImpl = (async () => {
-        calls += 1;
-        return new Response();
-      }) satisfies typeof fetch;
-      await assert.rejects(
-        executeProxyRequest(
-          { ...baseEnvelope, ...patch },
-          serverConfig,
-          dependencies(fetchImpl),
-        ),
-        ProxyRelayError,
-      );
-      assert.equal(calls, 0);
-    });
-  }
-});
+it.each(cases)(
+  "rejects unsafe destination or method: %s",
+  async (_name, patch) => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return new Response();
+    }) satisfies typeof fetch;
+    await expect(
+      executeProxyRequest(
+        { ...baseEnvelope, ...patch },
+        serverConfig,
+        dependencies(fetchImpl),
+      ),
+    ).rejects.toBeInstanceOf(ProxyRelayError);
+    expect(calls).toBe(0);
+  },
+);
 
-test("strips hop-by-hop request headers", async () => {
+it("strips hop-by-hop request headers", async () => {
   let upstreamHeaders = new Headers();
   const fetchImpl = (async (_input, init) => {
     upstreamHeaders = new Headers(init?.headers);
@@ -81,8 +78,8 @@ test("strips hop-by-hop request headers", async () => {
     serverConfig,
     dependencies(fetchImpl),
   );
-  assert.equal(upstreamHeaders.get("accept"), "text/html");
-  assert.equal(upstreamHeaders.get("authorization"), "upstream-auth");
+  expect(upstreamHeaders.get("accept")).toBe("text/html");
+  expect(upstreamHeaders.get("authorization")).toBe("upstream-auth");
   for (const name of [
     "connection",
     "content-length",
@@ -90,11 +87,11 @@ test("strips hop-by-hop request headers", async () => {
     "proxy-authorization",
     "transfer-encoding",
   ]) {
-    assert.equal(upstreamHeaders.has(name), false);
+    expect(upstreamHeaders.has(name)).toBe(false);
   }
 });
 
-test("follows same-host redirects and reports the final response", async () => {
+it("follows same-host redirects and reports the final response", async () => {
   const urls: string[] = [];
   const responses = [
     new Response(null, { status: 302, headers: { location: "/next" } }),
@@ -114,15 +111,15 @@ test("follows same-host redirects and reports the final response", async () => {
     serverConfig,
     dependencies(fetchImpl),
   );
-  assert.deepEqual(urls, [
+  expect(urls).toEqual([
     "https://prehraj.to/search?password=hidden",
     "https://prehraj.to/next",
   ]);
-  assert.equal(result.url, "https://prehraj.to/next");
-  assert.equal(Buffer.from(decodeBody(result.bodyBase64)).toString(), "ok");
+  expect(result.url).toBe("https://prehraj.to/next");
+  expect(Buffer.from(decodeBody(result.bodyBase64)).toString()).toBe("ok");
 });
 
-test("blocks redirects to a non-allowlisted host", async () => {
+it("blocks redirects to a non-allowlisted host", async () => {
   let calls = 0;
   const fetchImpl = (async () => {
     calls += 1;
@@ -131,20 +128,17 @@ test("blocks redirects to a non-allowlisted host", async () => {
       headers: { location: "https://example.com/escape" },
     });
   }) satisfies typeof fetch;
-  await assert.rejects(
+  await expect(
     executeProxyRequest(
       baseEnvelope,
       serverConfig,
       dependencies(fetchImpl),
     ),
-    (error: unknown) =>
-      error instanceof ProxyRelayError &&
-      error.code === "FORBIDDEN_DESTINATION",
-  );
-  assert.equal(calls, 1);
+  ).rejects.toMatchObject({ code: "FORBIDDEN_DESTINATION" });
+  expect(calls).toBe(1);
 });
 
-test("caps redirect chains", async () => {
+it("caps redirect chains", async () => {
   let calls = 0;
   const fetchImpl = (async () => {
     calls += 1;
@@ -153,19 +147,17 @@ test("caps redirect chains", async () => {
       headers: { location: `/redirect-${calls}` },
     });
   }) satisfies typeof fetch;
-  await assert.rejects(
+  await expect(
     executeProxyRequest(
       baseEnvelope,
       serverConfig,
       dependencies(fetchImpl),
     ),
-    (error: unknown) =>
-      error instanceof ProxyRelayError && error.code === "TOO_MANY_REDIRECTS",
-  );
-  assert.equal(calls, 6);
+  ).rejects.toMatchObject({ code: "TOO_MANY_REDIRECTS" });
+  expect(calls).toBe(6);
 });
 
-test("converts POST to GET for a 302 redirect", async () => {
+it("converts POST to GET for a 302 redirect", async () => {
   const methods: string[] = [];
   const bodies: Array<RequestInit["body"]> = [];
   const responses = [
@@ -187,67 +179,54 @@ test("converts POST to GET for a 302 redirect", async () => {
     serverConfig,
     dependencies(fetchImpl),
   );
-  assert.deepEqual(methods, ["POST", "GET"]);
-  assert.equal(bodies[1], undefined);
+  expect(methods).toEqual(["POST", "GET"]);
+  expect(bodies[1]).toBeUndefined();
 });
 
-test("enforces decoded request and response size limits", async (t) => {
-  await t.test("request", async () => {
-    let calls = 0;
-    const fetchImpl = (async () => {
-      calls += 1;
-      return new Response();
-    }) satisfies typeof fetch;
-    await assert.rejects(
-      executeProxyRequest(
-        {
-          ...baseEnvelope,
-          method: "POST",
-          bodyBase64: Buffer.alloc(MAX_PROXY_REQUEST_BYTES + 1).toString(
-            "base64",
-          ),
-        },
-        serverConfig,
-        dependencies(fetchImpl),
-      ),
-      (error: unknown) =>
-        error instanceof ProxyRelayError && error.code === "REQUEST_TOO_LARGE",
-    );
-    assert.equal(calls, 0);
-  });
-
-  await t.test("response", async () => {
-    const fetchImpl = (async () =>
-      new Response(Buffer.alloc(MAX_PROXY_RESPONSE_BYTES + 1))) satisfies typeof fetch;
-    await assert.rejects(
-      executeProxyRequest(
-        baseEnvelope,
-        serverConfig,
-        dependencies(fetchImpl),
-      ),
-      (error: unknown) =>
-        error instanceof ProxyRelayError &&
-        error.code === "RESPONSE_TOO_LARGE",
-    );
-  });
+it("rejects oversized decoded request bodies", async () => {
+  let calls = 0;
+  const fetchImpl = (async () => {
+    calls += 1;
+    return new Response();
+  }) satisfies typeof fetch;
+  await expect(
+    executeProxyRequest(
+      {
+        ...baseEnvelope,
+        method: "POST",
+        bodyBase64: Buffer.alloc(MAX_PROXY_REQUEST_BYTES + 1).toString(
+          "base64",
+        ),
+      },
+      serverConfig,
+      dependencies(fetchImpl),
+    ),
+  ).rejects.toMatchObject({ code: "REQUEST_TOO_LARGE" });
+  expect(calls).toBe(0);
 });
 
-test("maps upstream aborts to a timeout error", async () => {
+it("rejects oversized decoded response bodies", async () => {
+  const fetchImpl = (async () =>
+    new Response(Buffer.alloc(MAX_PROXY_RESPONSE_BYTES + 1))) satisfies typeof fetch;
+  await expect(
+    executeProxyRequest(baseEnvelope, serverConfig, dependencies(fetchImpl)),
+  ).rejects.toMatchObject({ code: "RESPONSE_TOO_LARGE" });
+});
+
+it("maps upstream aborts to a timeout error", async () => {
   const fetchImpl = (async () => {
     throw new DOMException("Timed out", "AbortError");
   }) satisfies typeof fetch;
-  await assert.rejects(
+  await expect(
     executeProxyRequest(
       baseEnvelope,
       serverConfig,
       dependencies(fetchImpl),
     ),
-    (error: unknown) =>
-      error instanceof ProxyRelayError && error.code === "UPSTREAM_TIMEOUT",
-  );
+  ).rejects.toMatchObject({ code: "UPSTREAM_TIMEOUT" });
 });
 
-test("logs sanitized summaries and optional redirect diagnostics", async () => {
+it("logs sanitized summaries and optional redirect diagnostics", async () => {
   const messages: unknown[][] = [];
   const logger: ProxyLogger = {
     info: (...args: unknown[]) => messages.push(args),
@@ -273,12 +252,9 @@ test("logs sanitized summaries and optional redirect diagnostics", async () => {
     dependencies(fetchImpl, logger),
   );
   const serialized = JSON.stringify(messages);
-  assert.match(serialized, /request-1/);
-  assert.match(serialized, /prehraj\.to/);
-  assert.match(serialized, /\/search|\/next/);
-  assert.doesNotMatch(
-    serialized,
-    /hidden|redirect-secret|cookie-secret|upstream-secret/,
-  );
-  assert.ok(messages.length >= 2);
+  expect(serialized).toMatch(/request-1/);
+  expect(serialized).toMatch(/prehraj\.to/);
+  expect(serialized).toMatch(/\/search|\/next/);
+  expect(serialized).not.toMatch(/hidden|redirect-secret|cookie-secret|upstream-secret/);
+  expect(messages.length).toBeGreaterThanOrEqual(2);
 });

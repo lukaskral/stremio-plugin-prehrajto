@@ -1,10 +1,9 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, it } from "vitest";
 
 import type { ProxyResponseEnvelope } from "../../src/proxy/protocol.ts";
 import { createServiceFetch } from "../../src/proxy/serviceFetch.ts";
 
-test("direct mode delegates to fetch unchanged", async () => {
+it("direct mode delegates to fetch unchanged", async () => {
   const calls: Array<[string | URL | Request, RequestInit | undefined]> = [];
   const fetchImpl = (async (input, init) => {
     calls.push([input, init]);
@@ -12,15 +11,14 @@ test("direct mode delegates to fetch unchanged", async () => {
   }) satisfies typeof fetch;
 
   const serviceFetch = createServiceFetch({ env: {}, fetchImpl });
-  assert.equal(
+  expect(
     await (await serviceFetch("https://prehraj.to/")).text(),
-    "direct",
-  );
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0][0], "https://prehraj.to/");
+  ).toBe("direct");
+  expect(calls).toHaveLength(1);
+  expect(calls[0][0]).toBe("https://prehraj.to/");
 });
 
-test("proxy mode serializes multipart requests and reconstructs cookies", async () => {
+it("proxy mode serializes multipart requests and reconstructs cookies", async () => {
   let envelope: Record<string, unknown> | undefined;
   let authorization: string | null = null;
   const proxyResponse: ProxyResponseEnvelope = {
@@ -32,10 +30,9 @@ test("proxy mode serializes multipart requests and reconstructs cookies", async 
     requestId: "request-1",
   };
   const fetchImpl = (async (input, init) => {
-    assert.equal(
+    expect(
       String(input),
-      "https://relay.test/internal/service-proxy",
-    );
+    ).toBe("https://relay.test/internal/service-proxy");
     authorization = new Headers(init?.headers).get("authorization");
     envelope = JSON.parse(String(init?.body)) as Record<string, unknown>;
     return Response.json(proxyResponse);
@@ -54,21 +51,20 @@ test("proxy mode serializes multipart requests and reconstructs cookies", async 
     body: form,
   });
   const envelopeHeaders = envelope?.headers as string[][];
-  assert.match(
+  expect(
     String(
       envelopeHeaders.find(([name]) => name === "content-type")?.[1],
     ),
-    /multipart\/form-data; boundary=/,
-  );
-  assert.ok(typeof envelope?.bodyBase64 === "string");
-  assert.equal(authorization, "Bearer secret");
-  assert.deepEqual(response.headers.getSetCookie(), [
+  ).toMatch(/multipart\/form-data; boundary=/);
+  expect(typeof envelope?.bodyBase64).toBe("string");
+  expect(authorization).toBe("Bearer secret");
+  expect(response.headers.getSetCookie()).toEqual([
     "access_token=abc; Path=/",
   ]);
-  assert.equal(await response.text(), "logged-in");
+  expect(await response.text()).toBe("logged-in");
 });
 
-test("proxy errors include only safe relay context", async () => {
+it("proxy errors include only safe relay context", async () => {
   const fetchImpl = (async () =>
     Response.json(
       {
@@ -87,17 +83,15 @@ test("proxy errors include only safe relay context", async () => {
     },
     fetchImpl,
   });
-  await assert.rejects(
-    serviceFetch("https://prehraj.to/private?password=hidden"),
-    (error: unknown) => {
-      assert.match(String(error), /UPSTREAM_TIMEOUT.*request-2/);
-      assert.doesNotMatch(String(error), /password|hidden/);
-      return true;
-    },
-  );
+  const error = await serviceFetch(
+    "https://prehraj.to/private?password=hidden",
+  ).catch((value: unknown) => value);
+  expect(error).toBeInstanceOf(Error);
+  expect(String(error)).toMatch(/UPSTREAM_TIMEOUT.*request-2/);
+  expect(String(error)).not.toMatch(/password|hidden/);
 });
 
-test("proxy mode rejects malformed success payloads", async () => {
+it("proxy mode rejects malformed success payloads", async () => {
   const fetchImpl = (async () =>
     Response.json({ status: "ok" })) satisfies typeof fetch;
   const serviceFetch = createServiceFetch({
@@ -107,8 +101,7 @@ test("proxy mode rejects malformed success payloads", async () => {
     },
     fetchImpl,
   });
-  await assert.rejects(
-    serviceFetch("https://prehraj.to/"),
+  await expect(serviceFetch("https://prehraj.to/")).rejects.toThrow(
     /malformed response/,
   );
 });
