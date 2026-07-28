@@ -1,7 +1,15 @@
+import { createHash } from "node:crypto";
+
 import { parseHTML } from "linkedom";
 
 import type { Resolver, StreamDetails } from "../getTopItems.ts";
-import { serviceFetch } from "../proxy/serviceFetch.ts";
+import { parseUserProxyConfig, type TransportConfig } from "../proxy/config.ts";
+import {
+  createServiceFetch,
+  type OuterRequest,
+} from "../proxy/serviceFetch.ts";
+import type { ProxyEndpointPolicyDependencies } from "../proxy/targetPolicy.ts";
+import type { UserConfigData } from "../userConfig/userConfig.ts";
 import { sizeToBytes, timeToSeconds } from "../utils/convert.ts";
 import { extractCookies, headerCookies } from "../utils/cookies.ts";
 import commonHeaders, { type FetchOptions } from "../utils/headers.ts";
@@ -14,6 +22,27 @@ const headers = {
   "x-requested-with": "XMLHttpRequest",
   Referer: "https://prehraj.to/",
 };
+
+type PrehrajtoResolverDependencies = {
+  proxyPolicy?: ProxyEndpointPolicyDependencies;
+  outerRequest?: OuterRequest;
+  transportConfig?: TransportConfig;
+};
+
+async function cancelResponseBody(response: Response) {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Releasing a response body is best-effort and must not mask request errors.
+  }
+}
+
+async function ensureSuccessfulResponse(response: Response, stage: string) {
+  if (!response.ok) {
+    await cancelResponseBody(response);
+    throw new Error(`PrehrajTo ${stage} request failed (${response.status})`);
+  }
+}
 
 /**
  * Get headers for authenticated response
@@ -46,8 +75,13 @@ async function login(
       method: "POST",
     },
   );
-
-  const cookies = extractCookies(r1);
+  await ensureSuccessfulResponse(r1, "login");
+  let cookies;
+  try {
+    cookies = extractCookies(r1);
+  } finally {
+    await cancelResponseBody(r1);
+  }
   if (!cookies.some((c) => c.name === "access_token")) {
     return {
       _debug: "cookie not found",
@@ -69,8 +103,13 @@ async function loginAnonymous(fetchImpl: typeof fetch) {
     },
     method: "GET",
   });
-
-  const cookies = extractCookies(result);
+  await ensureSuccessfulResponse(result, "session");
+  let cookies;
+  try {
+    cookies = extractCookies(result);
+  } finally {
+    await cancelResponseBody(result);
+  }
 
   return {
     headers: headerCookies(cookies),
@@ -81,6 +120,41 @@ const fetchOptionsCache = new Map<
   string,
   { created: number; options: Record<string, unknown> }
 >();
+const AUTH_CACHE_MAX_AGE_MS = 8_400_000;
+const MAX_AUTH_CACHE_ENTRIES = 64;
+
+function lengthDelimited(values: string[]) {
+  return values
+    .map((value) => `${Buffer.byteLength(value, "utf8")}:${value}`)
+    .join("");
+}
+
+function authCacheKey(
+  userName: string,
+  password: string,
+  transportIdentity: string,
+) {
+  return createHash("sha256")
+    .update(lengthDelimited([userName, password, transportIdentity]))
+    .digest("hex");
+}
+
+function pruneFetchOptionsCache(now: number) {
+  for (const [key, entry] of fetchOptionsCache) {
+    if (entry.created <= now - AUTH_CACHE_MAX_AGE_MS) {
+      fetchOptionsCache.delete(key);
+    }
+  }
+
+  while (fetchOptionsCache.size >= MAX_AUTH_CACHE_ENTRIES) {
+    const oldestKey = fetchOptionsCache.keys().next().value;
+    if (oldestKey === undefined) {
+      break;
+    }
+    fetchOptionsCache.delete(oldestKey);
+  }
+}
+
 /**
  * Get headers for authenticated response
  */
@@ -88,20 +162,21 @@ async function getFetchOptions(
   userName: string,
   password: string,
   fetchImpl: typeof fetch,
+  transportIdentity: string,
 ) {
-  const cacheKey = `${userName}:${password}`;
+  const now = Date.now();
+  pruneFetchOptionsCache(now);
+  const cacheKey = authCacheKey(userName, password, transportIdentity);
   const fetchCache = fetchOptionsCache.get(cacheKey);
   if (fetchCache) {
-    if (fetchCache.created && fetchCache.created > Date.now() - 8_400_000) {
-      return fetchCache.options;
-    } else {
-      fetchOptionsCache.delete(cacheKey);
-    }
+    fetchOptionsCache.delete(cacheKey);
+    fetchOptionsCache.set(cacheKey, fetchCache);
+    return fetchCache.options;
   }
 
   const newFetchOptions = await login(userName, password, fetchImpl);
   fetchOptionsCache.set(cacheKey, {
-    created: Date.now(),
+    created: now,
     options: newFetchOptions,
   });
   return newFetchOptions;
@@ -123,6 +198,7 @@ async function getResultStreamUrls(
     body: null,
     method: "GET",
   });
+  await ensureSuccessfulResponse(pageResponse, "detail");
   const pageHtml = await pageResponse.text();
   const { document } = parseHTML(pageHtml);
 
@@ -190,7 +266,7 @@ async function getSearchResults(
       method: "GET",
     },
   );
-
+  await ensureSuccessfulResponse(pageResponse, "search");
   const pageHtml = await pageResponse.text();
   const { document } = parseHTML(pageHtml);
   const links = document.querySelectorAll("a.video--link");
@@ -207,17 +283,59 @@ async function getSearchResults(
       duration: timeToSeconds(
         linkEl.querySelector(".video__tag--time").innerHTML,
       ),
-      format: linkEl
-        .querySelector(".video__tag--format use")
-        ?.getAttribute("xlink:href")
-        ?? linkEl.querySelector(".video__tag--format .format__text")?.textContent.trim(),
+      format:
+        linkEl
+          .querySelector(".video__tag--format use")
+          ?.getAttribute("xlink:href") ??
+        linkEl
+          .querySelector(".video__tag--format .format__text")
+          ?.textContent.trim(),
       size: sizeToBytes(sizeStr),
     };
   });
   return results;
 }
 
-export function getResolver(fetchImpl: typeof fetch = serviceFetch): Resolver {
+function transportIdentity(config: TransportConfig): string {
+  if (config.mode === "direct") {
+    return "transport:direct";
+  }
+
+  const proxyIdentity = lengthDelimited([config.endpoint.href, config.apiKey]);
+  return `transport:proxy:${createHash("sha256").update(proxyIdentity).digest("hex")}`;
+}
+
+export function getResolver(
+  fetchImpl: typeof fetch = globalThis.fetch,
+  dependencies: PrehrajtoResolverDependencies = {},
+): Resolver {
+  async function createRequestContext(addonConfig: UserConfigData) {
+    const config =
+      dependencies.transportConfig ??
+      (await parseUserProxyConfig(addonConfig, dependencies.proxyPolicy));
+    return {
+      fetchImpl: createServiceFetch({
+        config,
+        fetchImpl,
+        outerRequest: dependencies.outerRequest,
+      }),
+      transportIdentity: transportIdentity(config),
+    };
+  }
+
+  async function createAuthenticatedRequestContext(
+    addonConfig: UserConfigData,
+  ) {
+    const requestContext = await createRequestContext(addonConfig);
+    const fetchOptions = await getFetchOptions(
+      addonConfig.prehrajtoUsername,
+      addonConfig.prehrajtoPassword,
+      requestContext.fetchImpl,
+      requestContext.transportIdentity,
+    );
+    return { ...requestContext, fetchOptions };
+  }
+
   return {
     resolverName: "PrehrajTo",
 
@@ -240,30 +358,29 @@ export function getResolver(fetchImpl: typeof fetch = serviceFetch): Resolver {
       if (!addonConfig.prehrajtoUsername || !addonConfig.prehrajtoPassword) {
         return false;
       }
-      const fetchOptions = await getFetchOptions(
-        addonConfig.prehrajtoUsername,
-        addonConfig.prehrajtoPassword,
-        fetchImpl,
-      );
-      return "headers" in fetchOptions;
+      const requestContext =
+        await createAuthenticatedRequestContext(addonConfig);
+      return "headers" in requestContext.fetchOptions;
     },
 
     search: async (title, addonConfig) => {
-      const fetchOptions = await getFetchOptions(
-        addonConfig.prehrajtoUsername,
-        addonConfig.prehrajtoPassword,
-        fetchImpl,
+      const requestContext =
+        await createAuthenticatedRequestContext(addonConfig);
+      return getSearchResults(
+        title,
+        requestContext.fetchImpl,
+        requestContext.fetchOptions,
       );
-      return getSearchResults(title, fetchImpl, fetchOptions);
     },
 
     resolve: async (resolverId, addonConfig) => {
-      const fetchOptions = await getFetchOptions(
-        addonConfig.prehrajtoUsername,
-        addonConfig.prehrajtoPassword,
-        fetchImpl,
+      const requestContext =
+        await createAuthenticatedRequestContext(addonConfig);
+      return getResultStreamUrls(
+        resolverId,
+        requestContext.fetchImpl,
+        requestContext.fetchOptions,
       );
-      return getResultStreamUrls(resolverId, fetchImpl, fetchOptions);
     },
 
     cleanup: async () => {
@@ -271,12 +388,17 @@ export function getResolver(fetchImpl: typeof fetch = serviceFetch): Resolver {
     },
 
     debug: async (addonConfig) => {
-      const cacheKey = `${addonConfig.prehrajtoUsername}:${addonConfig.prehrajtoPassword}`;
+      const requestContext = await createRequestContext(addonConfig);
+      const cacheKey = authCacheKey(
+        addonConfig.prehrajtoUsername,
+        addonConfig.prehrajtoPassword,
+        requestContext.transportIdentity,
+      );
       const cache = fetchOptionsCache.get(cacheKey);
       const loginOptions = await login(
         addonConfig.prehrajtoUsername,
         addonConfig.prehrajtoPassword,
-        fetchImpl,
+        requestContext.fetchImpl,
       );
       return {
         cached: Boolean(cache),
