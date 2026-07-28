@@ -6,20 +6,20 @@ import { getTopItems } from "./src/getTopItems.ts";
 import { getMeta } from "./src/meta.ts";
 import { getTmdbDetails } from "./src/service/tmdb.ts";
 import {
-  type ConfigField,
+  PROXY_CONFIG_FIELDS,
   type UserConfigData,
 } from "./src/userConfig/userConfig.ts";
 import { bytesToSize } from "./src/utils/convert.ts";
 import { getAllResolvers } from "./src/utils/resolvers.ts";
 
-function getManifest() {
+function getManifest(): Manifest {
   const pkgData = readFileSync("./package.json", "utf8");
   const pkg = JSON.parse(pkgData);
   const allResolvers = getAllResolvers();
-  const userConfigDef = allResolvers.reduce(
-    (defs, resolver) => [...defs, ...resolver.getConfigFields()],
-    [] as ConfigField[],
-  );
+  const userConfigDef = [
+    ...PROXY_CONFIG_FIELDS,
+    ...allResolvers.flatMap((resolver) => resolver.getConfigFields()),
+  ];
 
   return {
     id: "community.czstreams",
