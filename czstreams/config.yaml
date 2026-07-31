@@ -1,5 +1,5 @@
 name: CzStreams
-version: "0.1.11"
+version: "0.1.12"
 slug: czstreams
 description: Czech and Slovak streams for Stremio
 url: https://github.com/lukaskral/stremio-plugin-prehrajto
@@ -19,4 +19,6 @@ webui: http://[HOST]:[PORT:52932]/
 
 options: {}
 
-schema: {}
+schema:
+  prehrajto_debug_username: str?
+  prehrajto_debug_password: password?
