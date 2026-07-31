@@ -1,6 +1,6 @@
 {
   "name": "stremio-plugin-czstreams",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "",
   "type": "module",
   "engines": {
@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node --env-file-if-exists=.env --experimental-strip-types server.ts",
+    "start:home-assistant": "node --experimental-strip-types homeAssistant.ts",
     "start:install": "node --env-file-if-exists=.env --experimental-strip-types server.ts --install",
     "check": "npm run check:tsc && npm run check:lint && npm test",
     "check:tsc": "tsc --noEmit",

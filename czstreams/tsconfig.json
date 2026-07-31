@@ -22,6 +22,7 @@
     "target": "ES2018",
   },
   "include": [
+    "homeAssistant.ts",
     "addon.ts",
     "server.ts",
     "src/**/*",

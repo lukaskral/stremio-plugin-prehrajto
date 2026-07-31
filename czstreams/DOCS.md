@@ -18,7 +18,17 @@ http://<home-assistant-host>:<mapped-port>/manifest.json
 
 Use the IP address or hostname that your Stremio device uses to reach Home
 Assistant. Configure PrehrajTo credentials through the CzStreams page presented
-by Stremio; this add-on has no Home Assistant configuration options.
+by Stremio.
+
+## Optional test endpoint credentials
+
+The add-on configuration includes optional **PrehrajTo debug username** and
+**PrehrajTo debug password** fields. They are used only by the `/test` endpoint;
+normal Stremio resolver credentials are still configured through CzStreams in
+Stremio.
+
+If either field is empty, CzStreams starts normally and `/test` returns a `503`
+response explaining that both debug environment variables are required.
 
 ## Troubleshooting
 
