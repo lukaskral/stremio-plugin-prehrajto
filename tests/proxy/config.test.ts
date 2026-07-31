@@ -1,98 +1,66 @@
-import { describe, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 
 import {
-  parseProxyConfig,
-  parseProxyQueryConfig,
-  parseUserProxyConfig,
+  getProxyClientConfig,
+  getProxyServerConfig,
 } from "../../src/proxy/config.ts";
 
-const resolvePublicAddress = vi.fn(async () => [
-  { address: "93.184.216.34", family: 4 as const },
-]);
+it("client proxy mode is disabled when both values are absent", () => {
+  expect(getProxyClientConfig({})).toBeNull();
+});
 
-describe("proxy configuration", () => {
-  it("selects direct mode only when both values are absent", async () => {
-    await expect(
-      parseProxyConfig({}, { resolveHostname: resolvePublicAddress }),
-    ).resolves.toEqual({ mode: "direct" });
-    await expect(
-      parseProxyConfig(
-        { proxyUrl: "  ", proxyApiKey: "" },
-        { resolveHostname: resolvePublicAddress },
-      ),
-    ).resolves.toEqual({ mode: "direct" });
+it("client proxy mode requires URL and client token together", () => {
+  expect(
+    () =>
+      getProxyClientConfig({
+        SERVICE_PROXY_URL: "https://relay.test/internal/service-proxy",
+      }),
+  ).toThrow(/SERVICE_PROXY_CLIENT_TOKEN/);
+  expect(
+    () =>
+      getProxyClientConfig({ SERVICE_PROXY_CLIENT_TOKEN: "secret" }),
+  ).toThrow(/SERVICE_PROXY_URL/);
+});
+
+it("server token alone does not enable client mode", () => {
+  expect(getProxyClientConfig({ SERVICE_PROXY_TOKEN: "server-secret" })).toBeNull();
+});
+
+it("server config defaults to the PrehrajTo hostname", () => {
+  expect(getProxyServerConfig({ SERVICE_PROXY_TOKEN: "secret" })).toEqual({
+    token: "secret",
+    allowedHosts: new Set(["prehraj.to"]),
+    debug: false,
   });
+});
 
-  it("requires the URL and API key together without exposing their values", async () => {
-    await expect(
-      parseProxyConfig(
-        { proxyUrl: "https://proxy.example.test/proxy" },
-        { resolveHostname: resolvePublicAddress },
-      ),
-    ).rejects.toThrow("Proxy URL and API key must be configured together");
-    await expect(
-      parseProxyConfig(
-        { proxyApiKey: "very-secret-key" },
-        { resolveHostname: resolvePublicAddress },
-      ),
-    ).rejects.toThrow("Proxy URL and API key must be configured together");
+it("server config rejects an empty token and normalizes allowed hosts", () => {
+  expect(() => getProxyServerConfig({})).toThrow(/SERVICE_PROXY_TOKEN/);
+  const config = getProxyServerConfig({
+    SERVICE_PROXY_TOKEN: "secret",
+    SERVICE_PROXY_ALLOWED_HOSTS:
+      " prehraj.to,cdn.prehraj.to,prehraj.to ",
+    SERVICE_PROXY_DEBUG: "true",
   });
+  expect([...config.allowedHosts]).toEqual([
+    "prehraj.to",
+    "cdn.prehraj.to",
+  ]);
+  expect(config.debug).toBe(true);
+});
 
-  it("normalizes a valid proxy pair and retains the TLS hostname", async () => {
-    const resolveHostname = vi.fn(async () => [
-      { address: "2606:2800:220:1:248:1893:25c8:1946", family: 6 as const },
-    ]);
-
-    await expect(
-      parseProxyConfig(
-        {
-          proxyUrl: "  https://Proxy.Example.Test:443/proxy  ",
-          proxyApiKey: "  very-secret-key  ",
-        },
-        { resolveHostname },
-      ),
-    ).resolves.toEqual({
-      mode: "proxy",
-      endpoint: new URL("https://proxy.example.test/proxy"),
-      apiKey: "very-secret-key",
-      connection: {
-        address: "2606:2800:220:1:248:1893:25c8:1946",
-        family: 6,
-        servername: "proxy.example.test",
-      },
-    });
-    expect(resolveHostname).toHaveBeenCalledWith("proxy.example.test");
-  });
-
-  it("parses installed and test-query values through the same policy", async () => {
-    const dependencies = { resolveHostname: resolvePublicAddress };
-    const expected = await parseProxyConfig(
-      {
-        proxyUrl: "https://proxy.example.test/proxy",
-        proxyApiKey: "secret",
-      },
-      dependencies,
-    );
-
-    await expect(
-      parseUserProxyConfig(
-        {
-          proxyUrl: "https://proxy.example.test/proxy",
-          proxyApiKey: "secret",
-          prehrajtoUsername: "user",
-        },
-        dependencies,
-      ),
-    ).resolves.toEqual(expected);
-    await expect(
-      parseProxyQueryConfig(
-        new URLSearchParams({
-          proxyUrl: "https://proxy.example.test/proxy",
-          proxyApiKey: "secret",
-          q: "Movie",
-        }),
-        dependencies,
-      ),
-    ).resolves.toEqual(expected);
-  });
+it("client relay URL must use HTTPS except on loopback", () => {
+  expect(
+    () =>
+      getProxyClientConfig({
+        SERVICE_PROXY_URL: "http://relay.test/internal/service-proxy",
+        SERVICE_PROXY_CLIENT_TOKEN: "secret",
+      }),
+  ).toThrow(/HTTPS/);
+  expect(
+    getProxyClientConfig({
+      SERVICE_PROXY_URL: "http://127.0.0.1:1234/internal/service-proxy",
+      SERVICE_PROXY_CLIENT_TOKEN: "secret",
+    })?.url.hostname,
+  ).toBe("127.0.0.1");
 });

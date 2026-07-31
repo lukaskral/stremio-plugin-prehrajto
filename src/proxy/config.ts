@@ -1,70 +1,84 @@
-import type { UserConfigData } from "../userConfig/userConfig.ts";
-import {
-  type ProxyEndpointPolicyDependencies,
-  type ValidatedProxyEndpoint,
-  validateProxyEndpoint,
-} from "./targetPolicy.ts";
+export type Environment = Record<string, string | undefined>;
 
-export type DirectTransportConfig = {
-  mode: "direct";
+export type ProxyClientConfig = {
+  url: URL;
+  token: string;
 };
 
-export type ProxyTransportConfig = ValidatedProxyEndpoint & {
-  mode: "proxy";
-  apiKey: string;
+export type ProxyServerConfig = {
+  token: string;
+  allowedHosts: Set<string>;
+  debug: boolean;
 };
 
-export type TransportConfig = DirectTransportConfig | ProxyTransportConfig;
+export const DEFAULT_ALLOWED_HOSTS = ["prehraj.to"];
+export const MAX_PROXY_ENVELOPE_BYTES = 512 * 1024;
+export const MAX_PROXY_REQUEST_BYTES = 256 * 1024;
+export const MAX_PROXY_RESPONSE_BYTES = 5 * 1024 * 1024;
+export const PROXY_TIMEOUT_MS = 15_000;
+export const MAX_PROXY_REDIRECTS = 5;
+export const ALLOWED_PROXY_METHODS = new Set(["GET", "HEAD", "POST"]);
 
-export type ProxyConfigValues = {
-  proxyUrl?: string | null;
-  proxyApiKey?: string | null;
-};
-
-export async function parseProxyConfig(
-  values: ProxyConfigValues,
-  dependencies?: ProxyEndpointPolicyDependencies,
-): Promise<TransportConfig> {
-  const proxyUrl = values.proxyUrl?.trim() ?? "";
-  const proxyApiKey = values.proxyApiKey?.trim() ?? "";
-
-  if (!proxyUrl && !proxyApiKey) {
-    return { mode: "direct" };
+function requiredValue(value: string | undefined, name: string): string {
+  const normalized = value?.trim();
+  if (!normalized) {
+    throw new Error(`${name} must be configured`);
   }
-  if (!proxyUrl || !proxyApiKey) {
-    throw new Error("Proxy URL and API key must be configured together");
+  return normalized;
+}
+
+export function getProxyClientConfig(
+  env: Environment = process.env,
+): ProxyClientConfig | null {
+  const rawUrl = env.SERVICE_PROXY_URL?.trim();
+  const rawToken = env.SERVICE_PROXY_CLIENT_TOKEN?.trim();
+
+  if (!rawUrl && !rawToken) {
+    return null;
+  }
+  if (!rawUrl) {
+    throw new Error(
+      "SERVICE_PROXY_URL must be configured with SERVICE_PROXY_CLIENT_TOKEN",
+    );
+  }
+  if (!rawToken) {
+    throw new Error(
+      "SERVICE_PROXY_CLIENT_TOKEN must be configured with SERVICE_PROXY_URL",
+    );
   }
 
-  const endpoint = await validateProxyEndpoint(proxyUrl, dependencies);
+  const url = new URL(rawUrl);
+  const isLoopback = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  if (url.protocol !== "https:" && !isLoopback) {
+    throw new Error("SERVICE_PROXY_URL must use HTTPS except for local tests");
+  }
+
+  return { url, token: rawToken };
+}
+
+export function getProxyServerConfig(
+  env: Environment = process.env,
+): ProxyServerConfig {
+  const token = requiredValue(
+    env.SERVICE_PROXY_TOKEN,
+    "SERVICE_PROXY_TOKEN",
+  );
+  const allowedHosts = (
+    env.SERVICE_PROXY_ALLOWED_HOSTS ?? DEFAULT_ALLOWED_HOSTS.join(",")
+  )
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (allowedHosts.length === 0) {
+    throw new Error(
+      "SERVICE_PROXY_ALLOWED_HOSTS must contain at least one hostname",
+    );
+  }
+
   return {
-    mode: "proxy",
-    ...endpoint,
-    apiKey: proxyApiKey,
+    token,
+    allowedHosts: new Set(allowedHosts),
+    debug: env.SERVICE_PROXY_DEBUG?.toLowerCase() === "true",
   };
-}
-
-export function parseUserProxyConfig(
-  config: UserConfigData,
-  dependencies?: ProxyEndpointPolicyDependencies,
-): Promise<TransportConfig> {
-  return parseProxyConfig(
-    {
-      proxyUrl: config.proxyUrl,
-      proxyApiKey: config.proxyApiKey,
-    },
-    dependencies,
-  );
-}
-
-export function parseProxyQueryConfig(
-  searchParams: URLSearchParams,
-  dependencies?: ProxyEndpointPolicyDependencies,
-): Promise<TransportConfig> {
-  return parseProxyConfig(
-    {
-      proxyUrl: searchParams.get("proxyUrl"),
-      proxyApiKey: searchParams.get("proxyApiKey"),
-    },
-    dependencies,
-  );
 }
