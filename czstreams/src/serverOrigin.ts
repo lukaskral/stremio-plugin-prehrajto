@@ -1,5 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { type IncomingMessage } from "node:http";
+import {
+  type IncomingMessage,
+  type RequestListener,
+  type Server,
+} from "node:http";
 
 import proxyaddr from "proxy-addr";
 
@@ -98,4 +102,35 @@ export function getServerOrigin(): string {
     throw new Error("Server origin is unavailable outside an HTTP request");
   }
   return origin;
+}
+
+type LogOriginError = (message: string, error: unknown) => void;
+
+export function installServerOriginContext(
+  server: Server,
+  trustProxy?: TrustProxy,
+  logError: LogOriginError = console.error,
+): void {
+  const originalListeners = server.listeners("request") as RequestListener[];
+  server.removeAllListeners("request");
+
+  server.on("request", (request, response) => {
+    let origin: string;
+    try {
+      origin = getRequestOrigin(request, trustProxy);
+    } catch (error) {
+      logError("Invalid request origin:", error);
+      response.writeHead(400, {
+        "Content-Type": "text/plain; charset=utf-8",
+      });
+      response.end("Invalid request origin\r\n\r\n");
+      return;
+    }
+
+    runWithServerOrigin(origin, () => {
+      for (const listener of originalListeners) {
+        listener.call(server, request, response);
+      }
+    });
+  });
 }

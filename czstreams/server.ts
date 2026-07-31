@@ -10,6 +10,10 @@ import cleanupHandler from "./src/endpoints/cleanup.ts";
 import mediaHandler from "./src/endpoints/getMediaUrl.ts";
 import serviceProxyHandler from "./src/endpoints/serviceProxy.ts";
 import testHandler from "./src/endpoints/test.ts";
+import {
+  createTrustProxy,
+  installServerOriginContext,
+} from "./src/serverOrigin.ts";
 import { runWithStartupHandling } from "./src/startup.ts";
 
 const serveHTTP = SDK.serveHTTP as unknown as (
@@ -18,6 +22,7 @@ const serveHTTP = SDK.serveHTTP as unknown as (
 ) => Promise<{ server: Server; url: string }>;
 
 void runWithStartupHandling(async () => {
+  const trustProxy = createTrustProxy(process.env.TRUST_PROXY);
   const { server } = await serveHTTP(addonInterface, {
     port: process.env.PORT ? Number(process.env.PORT) : 52932,
   });
@@ -57,4 +62,6 @@ void runWithStartupHandling(async () => {
       console.error(`Error on request ${req.url}`, error);
     }
   });
+
+  installServerOriginContext(server, trustProxy);
 });
