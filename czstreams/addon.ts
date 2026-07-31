@@ -12,7 +12,7 @@ import {
 import { bytesToSize } from "./src/utils/convert.ts";
 import { getAllResolvers } from "./src/utils/resolvers.ts";
 
-function getManifest() {
+function getManifest(): Manifest {
   const pkgData = readFileSync("./package.json", "utf8");
   const pkg = JSON.parse(pkgData);
   const allResolvers = getAllResolvers();

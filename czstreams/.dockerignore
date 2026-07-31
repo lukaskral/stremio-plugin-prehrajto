@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+.git
+.gitignore
+tests
+docs
+README.md
+DOCS.md
+CHANGELOG.md
+eslint.config.js
+tsconfig.json
+vitest.config.ts
