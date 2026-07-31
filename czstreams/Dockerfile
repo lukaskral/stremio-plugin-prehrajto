@@ -13,7 +13,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-COPY server.ts addon.ts ./
+COPY homeAssistant.ts server.ts addon.ts ./
 COPY src ./src
 COPY run.sh /run.sh
 

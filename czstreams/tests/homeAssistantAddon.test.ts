@@ -68,6 +68,9 @@ describe("Home Assistant add-on metadata", () => {
     const dockerfile = readFileSync(resolve(addonRoot, "Dockerfile"), "utf8");
     const runScript = readFileSync(resolve(addonRoot, "run.sh"), "utf8");
     const tsconfig = readFileSync(resolve(addonRoot, "tsconfig.json"), "utf8");
+    const packageJson = JSON.parse(
+      readFileSync(resolve(addonRoot, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
 
     expect(dockerfile).toMatch(/^FROM node:24-alpine$/m);
     expect(dockerfile).toContain("ARG BUILD_VERSION");
@@ -76,10 +79,14 @@ describe("Home Assistant add-on metadata", () => {
     expect(dockerfile).toContain('io.hass.type="app"');
     expect(dockerfile).toContain('io.hass.arch="${BUILD_ARCH}"');
     expect(dockerfile).toContain("RUN npm ci --omit=dev");
-    expect(dockerfile).toContain("COPY server.ts addon.ts ./");
+    expect(dockerfile).toContain("COPY homeAssistant.ts server.ts addon.ts ./");
     expect(dockerfile).toContain("COPY src ./src");
     expect(dockerfile).not.toContain("npm run build");
-    expect(runScript).toContain("exec npm run start");
+    expect(runScript).toContain("exec npm run start:home-assistant");
+    expect(packageJson.scripts["start:home-assistant"]).toBe(
+      "node --experimental-strip-types homeAssistant.ts",
+    );
+    expect(tsconfig).toContain('"homeAssistant.ts"');
     expect(tsconfig).toContain('"addon.ts"');
     expect(tsconfig).toContain('"server.ts"');
   });
