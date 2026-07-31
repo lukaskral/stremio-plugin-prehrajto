@@ -1,26 +1,22 @@
-name: stremio-plugin-czstreams
-version: "1.0.0"
-slug: stremio_plugin_czstreams
-description: CzStreams Stremio addon
-startup: services
+name: CzStreams
+version: "0.1.11"
+slug: czstreams
+description: Czech and Slovak streams for Stremio
+url: https://github.com/lukaskral/stremio-plugin-prehrajto
+startup: application
 boot: auto
 init: false
 
 arch:
   - amd64
   - aarch64
-  - armv7
-  - armhf
 
 ports:
   52932/tcp: 52932
 ports_description:
-  52932/tcp: CzStreams Stremio addon
+  52932/tcp: CzStreams Stremio add-on
+webui: http://[HOST]:[PORT:52932]/
 
-options:
+options: {}
 
-schema:
-  api_key: str
-  allowed_hosts:
-    - str
-  timeout_seconds: int(1,300)
+schema: {}
