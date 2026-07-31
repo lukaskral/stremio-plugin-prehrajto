@@ -2,6 +2,11 @@
 
 CzStreams is a small Stremio addon that finds Czech and Slovak media from supported online storage services. It currently enables the PrehrajTo resolver.
 
+The application lives in the `czstreams/` directory because that directory is
+also the Home Assistant Docker build context. Run all npm development commands
+from this directory. Home Assistant installation instructions are in the
+repository-level README.
+
 The project requires Node.js 24.
 
 ## Development
