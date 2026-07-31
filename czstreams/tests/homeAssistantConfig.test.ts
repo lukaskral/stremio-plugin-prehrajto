@@ -19,10 +19,22 @@ describe("Home Assistant configuration", () => {
     });
   });
 
+  test("maps trusted proxy ranges without changing their value", () => {
+    expect(
+      getHomeAssistantEnvironment({
+        trusted_proxies: "172.30.32.0/23, 192.168.1.10",
+      }),
+    ).toEqual({
+      TRUST_PROXY: "172.30.32.0/23, 192.168.1.10",
+    });
+  });
+
   test.each([
     [{}, {}],
     [{ prehrajto_debug_username: "" }, {}],
     [{ prehrajto_debug_password: "" }, {}],
+    [{ trusted_proxies: "" }, {}],
+    [{ trusted_proxies: 42 }, {}],
     [
       { prehrajto_debug_username: "debug@example.test" },
       { PREHRAJTO_DEBUG_USERNAME: "debug@example.test" },

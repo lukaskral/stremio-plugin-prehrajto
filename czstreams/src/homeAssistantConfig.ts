@@ -36,12 +36,16 @@ export function getHomeAssistantEnvironment(
   const environment: HomeAssistantEnvironment = {};
   const username = options.prehrajto_debug_username;
   const password = options.prehrajto_debug_password;
+  const trustedProxies = options.trusted_proxies;
 
   if (typeof username === "string" && username.length > 0) {
     environment.PREHRAJTO_DEBUG_USERNAME = username;
   }
   if (typeof password === "string" && password.length > 0) {
     environment.PREHRAJTO_DEBUG_PASSWORD = password;
+  }
+  if (typeof trustedProxies === "string" && trustedProxies.length > 0) {
+    environment.TRUST_PROXY = trustedProxies;
   }
 
   return environment;

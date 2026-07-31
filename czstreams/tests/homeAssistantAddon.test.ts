@@ -21,7 +21,7 @@ describe("Home Assistant add-on metadata", () => {
     });
   });
 
-  test("defines optional debug credentials for CzStreams", () => {
+  test("defines optional CzStreams settings", () => {
     const config = readYaml(resolve(addonRoot, "config.yaml"));
     const packageJson = JSON.parse(
       readFileSync(resolve(addonRoot, "package.json"), "utf8"),
@@ -29,7 +29,7 @@ describe("Home Assistant add-on metadata", () => {
 
     expect(config).toMatchObject({
       name: "CzStreams",
-      version: "0.1.12",
+      version: "0.1.13",
       slug: "czstreams",
       startup: "application",
       boot: "auto",
@@ -44,6 +44,7 @@ describe("Home Assistant add-on metadata", () => {
       schema: {
         prehrajto_debug_username: "str?",
         prehrajto_debug_password: "password?",
+        trusted_proxies: "str?",
       },
     });
     expect(packageJson.version).toBe(config.version);
