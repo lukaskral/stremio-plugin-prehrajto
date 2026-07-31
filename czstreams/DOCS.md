@@ -30,6 +30,26 @@ Stremio.
 If either field is empty, CzStreams starts normally and `/test` returns a `503`
 response explaining that both debug environment variables are required.
 
+## Reverse proxy
+
+Media URLs must retain the public scheme and hostname used by Stremio. When a
+reverse proxy terminates HTTPS, set the optional `trusted_proxies` add-on field
+to the proxy's source IP address or CIDR range. Do not enter the addresses of
+Stremio clients.
+
+Configure the proxy to replace incoming forwarding headers and send the public
+values to CzStreams. For nginx, the relevant directives are:
+
+```nginx
+proxy_set_header Host $http_host;
+proxy_set_header X-Forwarded-Host $http_host;
+proxy_set_header X-Forwarded-Proto $scheme;
+```
+
+Forwarded headers are ignored when `trusted_proxies` is empty or the connection
+does not come from a matching proxy address. Restart the add-on after changing
+the setting.
+
 ## Troubleshooting
 
 - Confirm the add-on is running and inspect its log for startup errors.

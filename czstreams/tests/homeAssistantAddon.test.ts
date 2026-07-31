@@ -65,6 +65,16 @@ describe("Home Assistant add-on metadata", () => {
     }
   });
 
+  test("documents trusted reverse-proxy configuration", () => {
+    const docs = readFileSync(resolve(addonRoot, "DOCS.md"), "utf8");
+    const envExample = readFileSync(resolve(addonRoot, ".env.example"), "utf8");
+
+    expect(docs).toContain("trusted_proxies");
+    expect(docs).toContain("X-Forwarded-Proto");
+    expect(docs).toContain("X-Forwarded-Host");
+    expect(envExample).toContain("TRUST_PROXY=");
+  });
+
   test("runs TypeScript directly on Node 24 with Home Assistant labels", () => {
     const dockerfile = readFileSync(resolve(addonRoot, "Dockerfile"), "utf8");
     const runScript = readFileSync(resolve(addonRoot, "run.sh"), "utf8");

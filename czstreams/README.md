@@ -27,6 +27,21 @@ npm run check
 
 The fixture provenance and refresh policy are documented in `tests/fixtures/prehrajto/README.md`.
 
+## Request origin and reverse proxies
+
+Media callback URLs use the same public origin that requested the add-on. Direct
+HTTP access needs no configuration. A reverse-proxy deployment must set
+`TRUST_PROXY` to the proxy's IP address or CIDR range and must replace
+client-supplied `X-Forwarded-Proto` and `X-Forwarded-Host` headers with the
+public request values.
+
+```dotenv
+TRUST_PROXY=172.30.32.0/23
+```
+
+Forwarded headers from peers outside the configured range are ignored. Use the
+narrowest stable address or network from which the proxy connects.
+
 ## Service proxy
 
 The service proxy is an optional debugging relay. It lets a local addon send PrehrajTo login, search, and detail-page requests through the deployed addon server. This helps reproduce failures that depend on the deployment's source network.

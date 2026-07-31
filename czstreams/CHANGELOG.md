@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.13
+
+- Generate media callback URLs from each request's direct or trusted forwarded
+  public origin instead of a hard-coded hosted deployment.
+- Add optional Home Assistant trusted-proxy configuration for HTTPS reverse
+  proxies.
+
 ## 0.1.12
 
 - Add optional Home Assistant configuration for the PrehrajTo debug username
