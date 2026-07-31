@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import { type Express, type Request, type Response } from "express";
+import { type Server } from "node:http";
+
+import { type Request, type Response } from "express";
 import SDK from "stremio-addon-sdk";
 
 import { addonInterface } from "./addon.ts";
@@ -12,7 +14,7 @@ import testHandler from "./src/endpoints/test.ts";
 const serveHTTP = SDK.serveHTTP as unknown as (
   addon: typeof addonInterface,
   options: { port: number },
-) => Promise<{ server: Express; url: string }>;
+) => Promise<{ server: Server; url: string }>;
 
 serveHTTP(addonInterface, {
   port: process.env.PORT ? Number(process.env.PORT) : 52932,

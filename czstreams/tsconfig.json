@@ -22,6 +22,8 @@
     "target": "ES2018",
   },
   "include": [
+    "addon.ts",
+    "server.ts",
     "src/**/*",
     "tests/**/*"
   ]

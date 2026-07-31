@@ -1,4 +1,4 @@
-#!/usr/bin/with-contenv bashio
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 exec npm run start

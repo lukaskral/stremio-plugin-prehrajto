@@ -56,4 +56,24 @@ describe("Home Assistant add-on metadata", () => {
       expect(existsSync(resolve(addonRoot, path)), path).toBe(true);
     }
   });
+
+  test("runs TypeScript directly on Node 24 with Home Assistant labels", () => {
+    const dockerfile = readFileSync(resolve(addonRoot, "Dockerfile"), "utf8");
+    const runScript = readFileSync(resolve(addonRoot, "run.sh"), "utf8");
+    const tsconfig = readFileSync(resolve(addonRoot, "tsconfig.json"), "utf8");
+
+    expect(dockerfile).toMatch(/^FROM node:24-alpine$/m);
+    expect(dockerfile).toContain("ARG BUILD_VERSION");
+    expect(dockerfile).toContain("ARG BUILD_ARCH");
+    expect(dockerfile).toContain('io.hass.version="${BUILD_VERSION}"');
+    expect(dockerfile).toContain('io.hass.type="app"');
+    expect(dockerfile).toContain('io.hass.arch="${BUILD_ARCH}"');
+    expect(dockerfile).toContain("RUN npm ci --omit=dev");
+    expect(dockerfile).toContain("COPY server.ts addon.ts ./");
+    expect(dockerfile).toContain("COPY src ./src");
+    expect(dockerfile).not.toContain("npm run build");
+    expect(runScript).toContain("exec npm run start");
+    expect(tsconfig).toContain('"addon.ts"');
+    expect(tsconfig).toContain('"server.ts"');
+  });
 });
